@@ -10,4 +10,9 @@ submitted a research article describing the CERENKOV computational approach and
 demonstrating CERENKOV's accuracy for discriminating rSNPs from nonfunctional
 SNPs to the 2017 ACM-BCB conference.
 
+The March 2017 data files for CERENKOV can be accessed at [lab.saramsey.org/cerenkov](http://lab.saramsey.org/cerenkov).
+
+
+
+
 
