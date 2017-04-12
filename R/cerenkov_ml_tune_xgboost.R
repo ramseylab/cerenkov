@@ -31,7 +31,7 @@
 
 g_par <- list(
     num_folds_cross_validation = 10,  
-    num_cv_replications = 12,         
+    num_cv_replications = 24,         
     flag_create_fork_cluster = TRUE,   
     override_num_fork_processes = 64,  
     notify_by_text_msg = TRUE,
