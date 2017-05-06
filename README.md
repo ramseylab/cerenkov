@@ -10,7 +10,10 @@ submitted a research article describing the CERENKOV computational approach and
 demonstrating CERENKOV's accuracy for discriminating rSNPs from nonfunctional
 SNPs to the 2017 ACM-BCB conference.
 
-The March 2017 data files for CERENKOV can be accessed at [lab.saramsey.org/cerenkov](http://lab.saramsey.org/cerenkov).
+The March 2017 data files for CERENKOV can be accessed on the [Ramsey Lab file server](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov/datafiles_201703)
+(see README.md files under the subdirectories of the GitHub CERENKOV project area,
+for more information about which data files are used in which parts of CERENKOV).
+
 
 
 
