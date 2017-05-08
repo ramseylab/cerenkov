@@ -1,4 +1,4 @@
-# CEREMKOV feature extraction
+# CERENKOV feature extraction
 
 ## Prerequisites
 
