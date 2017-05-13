@@ -1,7 +1,7 @@
 # cerenkov
 ## Computational Elucidation of the REgulatory NonKOding Variome
 
-CERENKOV is a software pipeline and associated machine-learning classifier for
+CERENKOV is a software pipeline and associated machine-learning framework for
 identifying regulatory single nucleotide polymorphisms (rSNPs) in the noncoding
 genome for post-analysis of genetic regions identified in genome-wide
 association studies (GWAS).  CERENKOV was created by Yao Yao, Zheng Liu,
