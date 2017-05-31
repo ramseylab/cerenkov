@@ -1,6 +1,6 @@
 from abstract_feature_util import AbstractFeatureUtil
 from genome_browser_client import GenomeBrowserClient
-from chrom_tool import remove_dup_on_chrY
+from chrom_tool import remove_dup_on_chrY, CHR_LENGTH
 
 
 class CoordUtil(AbstractFeatureUtil):
@@ -14,6 +14,15 @@ class CoordUtil(AbstractFeatureUtil):
                   format(n=sum(in_pce), dfm=snp_dfm[in_pce]))
 
         return snp_dfm.loc[~in_pce]
+
+    @staticmethod
+    def add_norm_coord(snp_dfm):
+        # Integer division will yield float
+        # See PEP 238 -- Changing the Division Operator, https://www.python.org/dev/peps/pep-0238/
+        snp_dfm.loc[:, "normChromCoord"] = snp_dfm.apply(lambda row: row['chromStart'] / CHR_LENGTH[row['chrom']],
+                                                         axis=1)
+
+        return snp_dfm
 
     def get_feat(self, _input):
         rsid = _input

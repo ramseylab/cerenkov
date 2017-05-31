@@ -197,7 +197,7 @@ class GenomeBrowserClient:
         chroms = (", ".join("'" + x + "'" for x in ct.REGULAR_CHR))
 
         query = '''
-                SELECT s.name, s.chrom, s.chromStart, s.chromEnd,
+                SELECT s.name, s.chrom,
                     SUBSTRING_INDEX(GROUP_CONCAT(DISTINCT ch1.name), ',', 1) as ch1Name,
                     SUBSTRING_INDEX(GROUP_CONCAT(DISTINCT ch2.name), ',', 1) as ch2Name,
                     SUBSTRING_INDEX(GROUP_CONCAT(DISTINCT ch3.name), ',', 1) as ch3Name,
@@ -338,6 +338,80 @@ class GenomeBrowserClient:
         # Sqlalchemy will read them as bytes not strings
         df.loc[:, "alleles"] = df["alleles"].apply(parse_gb_alleles_col)
         df.loc[:, "alleleFreqs"] = df["alleleFreqs"].apply(parse_gb_allele_freqs_col)
+
+        return df
+
+    def fetch_master_dhs(self, rsid):
+        snps = ", ".join("'{}'".format(x) for x in rsid)
+        chroms = ", ".join("'{}'".format(x) for x in ct.REGULAR_CHR)
+        clazz = "'single'"
+
+        query = '''
+                select s.name, s.chrom, s.chromStart, s.chromEnd,
+                    dh.score as masterDhsScore, dh.sourceCount as masterDhsCount
+                from snp146 as s
+                left outer join wgEncodeAwgDnaseMasterSites as dh
+                ON
+                    dh.bin = s.bin # Speeds up JOINs
+                    AND s.chromStart BETWEEN dh.chromStart AND dh.chromEnd - 1
+                    AND dh.chrom = s.chrom
+                where s.name IN ( ''' + snps + ''') AND
+                      s.chrom IN (''' + chroms + ''') AND
+                      s.class = ''' + clazz
+
+        rows = self.conn.execute(query)
+
+        df = pandas.DataFrame(rows.fetchall())
+        df.columns = rows.keys()
+
+        return df
+
+    def fetch_phastcons(self, rsid):
+        snps = ", ".join("'{}'".format(x) for x in rsid)
+        chroms = ", ".join("'{}'".format(x) for x in ct.REGULAR_CHR)
+        clazz = "'single'"
+
+        query = ("select s.name, s.chrom, pc.sumData/pc.validCount as phastCons "
+                 "from snp146 as s "
+                 "left outer join phyloP46wayPlacental as pc "
+                 "ON "
+                 "  pc.bin = s.bin "
+                 "  AND s.chromStart BETWEEN pc.chromStart AND pc.chromEnd - 1 "
+                 "  AND pc.chrom = s.chrom "
+                 "where s.name IN ({snps}) AND "
+                 "  s.chrom IN ({chroms}) AND "
+                 "  s.class = {clazz}".format(snps=snps, chroms=chroms, clazz=clazz))
+
+        rows = self.conn.execute(query)
+
+        df = pandas.DataFrame(rows.fetchall())
+        df.columns = rows.keys()
+
+        return df
+
+    def fetch_tf(self, rsid):
+        snps = ", ".join("'{}'".format(x) for x in rsid)
+        chroms = ", ".join("'{}'".format(x) for x in ct.REGULAR_CHR)
+        clazz = "'single'"
+
+        query = ("select s.name, s.chrom, "
+                 "  GROUP_CONCAT(tf.name) as tfName, COUNT(tf.name) as tfCount "
+                 "from snp146 as s "
+                 "left outer join wgEncodeRegTfbsClusteredV3 as tf "
+                 "ON "
+                 "  tf.bin = s.bin "
+                 "  AND s.chromStart BETWEEN tf.chromStart AND tf.chromEnd - 1 "
+                 "  AND tf.chrom = s.chrom "
+                 "where s.name IN ({snps}) AND "
+                 "  s.chrom IN ({chroms}) AND "
+                 "  s.class = {clazz} AND "
+                 "  tf.name != 'POLR2A'"
+                 "GROUP BY s.name, s.chrom".format(snps=snps, chroms=chroms, clazz=clazz))
+
+        rows = self.conn.execute(query)
+
+        df = pandas.DataFrame(rows.fetchall())
+        df.columns = rows.keys()
 
         return df
 
@@ -489,7 +563,7 @@ class GenomeBrowserClient:
             df.loc[:, col] = pandas.to_numeric(df[col])
 
         return df
-
+#
 # if __name__ == '__main__':
 #     with GenomeBrowserClient('local_hg19') as gb_client:
-#         print(gb_client.select_vista_enhancer('chr1', 3190581))
+#         print(gb_client.select_vista_enhancer('chr1', 3190580))

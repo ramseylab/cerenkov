@@ -1,2 +1,8 @@
+# Ignore everything in this directory
 *
+# Except this file
 !.gitignore
+# Except markdown, md5 and description files
+!*.md
+!*.md5
+!*.desc

@@ -68,7 +68,7 @@ class AlleleUtilCase(unittest.TestCase):
         self.assertEqual(result.loc[7, 'C'], 0)
         self.assertEqual(result.loc[7, 'G'], 0)
 
-    def test_something(self):
+    def test_maf_filter(self):
         data = [
             # ['name',   'A',  'T',  'C',  'G']
             ['rs1002076', 0,    0,    0,    0],     # biomart; keep
@@ -86,11 +86,12 @@ class AlleleUtilCase(unittest.TestCase):
 
         df = pd.DataFrame(data=data, columns=['name', 'A', 'T', 'C', 'G'])
 
-        is_eligible = df.loc[:, list('ATCG')].apply(lambda x: sum(x >= 0.05) == 2, axis=1)
-        self.assertEqual(len(is_eligible), 11)
-        self.assertEqual(sum(is_eligible), 3)
+        # is_eligible = df.loc[:, list('ATCG')].apply(lambda x: sum(x >= 0.05) == 2, axis=1)
+        # self.assertEqual(len(is_eligible), 11)
+        # self.assertEqual(sum(is_eligible), 3)
 
-        fltr_df = df.loc[is_eligible].set_index('name')
+        fltr_df = AlleleUtil.maf_filter(df, maf_threshold=0.05, use_biomart=False)
+        fltr_df = fltr_df.set_index('name')
         self.assertEqual(fltr_df.shape[0], 3)
         self.assertTrue('rs4' in fltr_df.index)
         self.assertTrue('rs7' in fltr_df.index)

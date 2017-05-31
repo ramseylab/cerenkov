@@ -2,8 +2,8 @@
 *
 # Except this file
 !.gitignore
-# Except png, markdown, md5 and description files
+# Except shell, markdown, md5 and description files
 !*.md
 !*.md5
 !*.desc
-!*.png
+!*.sh

@@ -18,7 +18,7 @@ class TssUtil2Test(unittest.TestCase):
             'chrom': ["chr1", "chr1", "chr2", "chr2", "chr3", "chr3", "chrY"], 
             "tssDistance": [1, -1, 3, 4, 5, numpy.NaN, 6]
         })
-        min_td = TssDistUtil._select_min(dfm)
+        min_td = TssDistUtil.select_min(dfm)
         min_td = min_td.set_index(["name", "chrom"])
 
         self.assertEqual(min_td.shape[0], 4)

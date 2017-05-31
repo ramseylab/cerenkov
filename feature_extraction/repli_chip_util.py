@@ -1,67 +1,15 @@
-import pandas
+import pandas as pd
+from io import StringIO
+import sys
+import os
 import sys_tool
 from pybedtools import BedTool
-from io import StringIO
 from abstract_feature_util import AbstractFeatureUtil
 
-# Extraction From Bigwigh is DEPRECATED!!!
-
-# def extract_from_bigwig(src_bed, dest):
-#     bigwig = dict(
-#         FsuBg02esRep1="wgEncodeFsuRepliChipBg02esWaveSignalRep1.bigWig",
-#         FsuBg02esRep2="wgEncodeFsuRepliChipBg02esWaveSignalRep2.bigWig",
-#         FsuGm06990Rep1="wgEncodeFsuRepliChipGm06990WaveSignalRep1.bigWig",
-#         FsuGm06990Rep2="wgEncodeFsuRepliChipGm06990WaveSignalRep2.bigWig",
-#         FsuH1hescRep1="wgEncodeFsuRepliChipH1hescWaveSignalRep1.bigWig",
-#         FsuH1hescRep2="wgEncodeFsuRepliChipH1hescWaveSignalRep2.bigWig",
-#         FsuH1hescRep3="wgEncodeFsuRepliChipH1hescWaveSignalRep3.bigWig",
-#         FsuH7esRep1="wgEncodeFsuRepliChipH7esWaveSignalRep1.bigWig",
-#         FsuH7esRep2="wgEncodeFsuRepliChipH7esWaveSignalRep2.bigWig",
-#         FsuH9esRep1="wgEncodeFsuRepliChipH9esWaveSignalRep1.bigWig",
-#         FsuHelas3Rep1="wgEncodeFsuRepliChipHelas3WaveSignalRep1.bigWig",
-#         FsuImr90Rep1="wgEncodeFsuRepliChipImr90WaveSignalRep1.bigWig",
-#         FsuIpshfib2ips4Rep1="wgEncodeFsuRepliChipIpshfib2ips4WaveSignalRep1.bigWig",
-#         FsuIpshfib2ips4Rep2="wgEncodeFsuRepliChipIpshfib2ips4WaveSignalRep2.bigWig",
-#         FsuIpshfib2ips5Rep1="wgEncodeFsuRepliChipIpshfib2ips5WaveSignalRep1.bigWig",
-#         FsuIpshfib2ips5Rep2="wgEncodeFsuRepliChipIpshfib2ips5WaveSignalRep2.bigWig"
-#     )
-#
-#     def frc_dfm():
-#         for key in bigwig.keys():
-#             src_bw = "{dir}/{file}".format(dir=sys_tool.find_directory("fsu_repli_chip"), file=bigwig[key])
-#
-#             # This command would output a file with undesired columns. Need pruning.
-#             sys_tool.run_bigWigAverageOverBed([src_bw, src_bed, dest])
-#
-#             """
-#             The dest has no header. Its 6 columns are:
-#                name - name field from bed, which should be unique
-#                size - size of bed (sum of exon sizes)
-#                covered - # bases within exons covered by bigWig
-#                sum - sum of values over all bases covered
-#                mean0 - average over bases with non-covered bases counting as zeroes
-#                mean - average over just covered bases
-#             """
-#
-#             col_names = ['name', 'size', 'covered', 'sum', 'mean0', 'mean']
-#
-#             # Use `dtype=str` or `dtype=object` to preserve and not interpret dtype
-#             # If pandas reads scores as floats, the dest would contain float numbers with long tails.
-#             # E.g. input == 0.806; dest == 0.8059999999999999
-#             _frc_dfm = pandas.read_csv(dest, sep='\t', header=None, names=col_names, usecols=['name', 'sum'], dtype=str)
-#
-#             # Choose column `sum` to represent repli-chip scores
-#             _frc_dfm = _frc_dfm.rename(columns={'sum': key}).set_index('name')
-#
-#             yield _frc_dfm
-#
-#     dfms = list(frc_dfm())
-#     dfm = pandas.concat(dfms, axis=1)
-#     dfm.to_csv(dest, sep='\t', index=True, header=True)
-#
-# if __name__ == '__main__':
-#     # extract_fsu_repli_chip('workspace/RSNP_50kb.bed', 'workspace/RSNP_50kb_FSU.tsv')
-#     extract_from_bigwig('workspace/CSNP_50kb.bed', 'workspace/CSNP_50kb_FSU.tsv')
+if sys.version_info[0] == 3:
+    # Using Python3
+    from functools import reduce
+# `reduce` is a built-in function in Python2
 
 
 class RepliChipUtil(AbstractFeatureUtil):
@@ -69,30 +17,30 @@ class RepliChipUtil(AbstractFeatureUtil):
         snp_bed_obj = BedTool(snp_dfm.to_string(index=False, header=False, index_names=False), from_string=True)
 
         for key, bed_fn in self.src_data_fn.items():
-            rep_bed_fn = "{dir}/{file}".format(dir=self.src_data_dir, file=bed_fn)
+            rep_bed_fn = os.path.join(self.src_data_dir, bed_fn)
             rep_bed_obj = BedTool(rep_bed_fn)
 
             # Downstream scores
             closest_iu = snp_bed_obj.closest(rep_bed_obj, D='ref', iu=True)
-            closest_iu_dfm = pandas.read_table(StringIO(str(closest_iu)), header=None,
-                                               names=['snpChrom', 'snpChromStart', 'snpChromEnd', 'snpName',
-                                                      'repChrom', 'repChromStart', 'repChromEnd', 'repScore',
-                                                      'distance'],
-                                               usecols=['snpName', 'repScore'])
+            closest_iu_dfm = pd.read_table(StringIO(str(closest_iu)), header=None,
+                                           names=['snpChrom', 'snpChromStart', 'snpChromEnd', 'snpName',
+                                                  'repChrom', 'repChromStart', 'repChromEnd', 'repScore', 'distance'],
+                                           usecols=['snpName', 'repScore'])
             closest_iu_dfm = closest_iu_dfm.rename(columns={'snpName': 'name',
-                                                            'repScore': 'iu_score'}).set_index('name')
+                                                            'repScore': 'iu_score'})
 
             # Upstream scores
             closest_id = snp_bed_obj.closest(rep_bed_obj, D='ref', id=True)
-            closest_id_dfm = pandas.read_table(StringIO(str(closest_id)), header=None,
-                                               names=['snpChrom', 'snpChromStart', 'snpChromEnd', 'snpName',
-                                                      'repChrom', 'repChromStart', 'repChromEnd', 'repScore',
-                                                      'distance'],
-                                               usecols=['snpName', 'repScore'])
+            closest_id_dfm = pd.read_table(StringIO(str(closest_id)), header=None,
+                                           names=['snpChrom', 'snpChromStart', 'snpChromEnd', 'snpName',
+                                                  'repChrom', 'repChromStart', 'repChromEnd', 'repScore', 'distance'],
+                                           usecols=['snpName', 'repScore'])
             closest_id_dfm = closest_id_dfm.rename(columns={'snpName': 'name',
-                                                            'repScore': 'id_score'}).set_index('name')
+                                                            'repScore': 'id_score'})
 
-            score_dfm = pandas.concat([closest_iu_dfm, closest_id_dfm], axis=1)
+            # score_dfm = pd.concat([closest_iu_dfm, closest_id_dfm], axis=1)
+            score_dfm = closest_iu_dfm.merge(closest_id_dfm, on='name')
+
             score_dfm = score_dfm.assign(avg_score=(score_dfm['iu_score'] + score_dfm['id_score']) / 2.0). \
                 drop(['iu_score', 'id_score'], axis=1)
             score_dfm = score_dfm.rename(columns={'avg_score': key})
@@ -100,11 +48,12 @@ class RepliChipUtil(AbstractFeatureUtil):
             yield score_dfm
 
     def get_feat(self, _input):
-        snp_dfm = _input
+        snp_dfm = _input.loc[:, ['chrom', 'chromStart', 'chromEnd', 'name']]
 
         yielded_score_dfm = list(self.__yield_score_dfm(snp_dfm))
-        result = pandas.concat(yielded_score_dfm, axis=1)
-        return result.reset_index()
+        # result = pd.concat(yielded_score_dfm, axis=1)
+        result = reduce(lambda left, right: pd.merge(left, right, on='name'), yielded_score_dfm)
+        return result
 
     def save_temp(self, _result):
         _result.to_csv(self.temp_dest, sep='\t', index=False, header=True)
@@ -113,10 +62,8 @@ if __name__ == '__main__':
 
     rc_util = RepliChipUtil()
 
-    snp_bed_fn = "{dir}/{file}".format(dir=sys_tool.find_directory("fsu_repli_chip"),
-                                       file='RSNP_50kb.bed')
-    snp_dfm = pandas.read_table(snp_bed_fn, header=None,
-                                names=['chrom', 'chromStart', 'chromEnd', 'name'])
+    snp_bed_fn = os.path.join(sys_tool.find_directory("fsu_repli_chip"), 'RSNP_50kb.bed')
+    snp_dfm = pd.read_table(snp_bed_fn, header=None, names=['chrom', 'chromStart', 'chromEnd', 'name'])
 
     rc_util.src_data_dir = sys_tool.find_directory("fsu_repli_chip")
     rc_util.src_data_fn = dict(

@@ -1,9 +1,10 @@
-from abstract_feature_util import AbstractFeatureUtil
-from sys_tool import find_directory
+import os
 import pandas as pd
 import numpy as np
 from math import log10
 from glob import glob
+from abstract_feature_util import AbstractFeatureUtil
+from sys_tool import find_directory
 
 
 class EqtlUtil(AbstractFeatureUtil):
@@ -27,9 +28,9 @@ class EqtlUtil(AbstractFeatureUtil):
 
         if self.src_data_fn is None:
             # list all files with '.portal.eqtl' extension in the specified directory
-            eqtl_paths = glob(pathname="{dir}/{fn}".format(dir=self.src_data_dir, fn="*.portal.eqtl"))
+            eqtl_paths = glob(pathname=os.path.join(self.src_data_dir, "*.portal.eqtl"))
         else:
-            eqtl_paths = ["{dir}/{fn}".format(dir=self.src_data_dir, fn=fn) for fn in self.src_data_fn]
+            eqtl_paths = [os.path.join(self.src_data_dir, fn) for fn in self.src_data_fn]
 
         yielded_eqtl_dfms = list(self.__yield_eqtl_dfm(snp_dfm, eqtl_paths))
         result = pd.concat(yielded_eqtl_dfms, axis=0)
@@ -52,7 +53,7 @@ class EqtlUtil(AbstractFeatureUtil):
 
 
 if __name__ == '__main__':
-    rsnp_dfm = pd.read_table("{}/RSNP_50kb.bed".format(find_directory('CADD')), header=None,
+    rsnp_dfm = pd.read_table(os.path.join(find_directory('CADD'), "RSNP_50kb.bed"), header=None,
                              names=['chrom', 'chromStart', 'chromEnd', 'name'])
     print(rsnp_dfm.shape)
 

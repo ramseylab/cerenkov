@@ -1,9 +1,14 @@
+import time
+from datetime import timedelta
+
+
 class AbstractFeatureUtil(object):
     def __init__(self):
         self._temp_dest = None
         self._db_config_key = None
         self._src_data_dir = None
         self._src_data_fn = None
+        self._last_time_elapsed = 0  # in second
 
     @property
     def temp_dest(self):
@@ -37,6 +42,10 @@ class AbstractFeatureUtil(object):
     def src_data_fn(self, value):
         self._src_data_fn = value
 
+    @property
+    def last_time_elapsed(self):
+        return timedelta(seconds=self._last_time_elapsed)
+
     def get_feat(self, _input):
         raise NotImplementedError("This is an abstract method.")
 
@@ -44,9 +53,15 @@ class AbstractFeatureUtil(object):
         raise NotImplementedError("This is an abstract method.")
 
     def extract(self, _input):
+        start_time = time.time()
+
         _result = self.get_feat(_input)
 
         if self.temp_dest is not None:
             self.save_temp(_result)
+
+        end_time = time.time()
+
+        self._last_time_elapsed = end_time - start_time
 
         return _result

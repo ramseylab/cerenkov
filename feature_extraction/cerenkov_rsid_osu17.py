@@ -1,4 +1,5 @@
 import sys
+import os
 import pandas as pd
 import chrom_tool as ct
 from genome_browser_client import GenomeBrowserClient
@@ -122,9 +123,15 @@ def reproduce_recomb_rsid(db_config_key, local_locus_map_file=None):
         r_rsid = hgmd_client.select_rsid()  # a list
 
     if local_locus_map_file is None:
-        # locus_map is generated with the unfiltered RSNP rsid
+        # _locus_map is generated with the unfiltered RSNP rsid
+        print('[reproduce_recomb_rsid] Querying SNAP...')
+        locus_map = __get_locus_map(r_rsid)
+    elif not os.path.isfile(local_locus_map_file):
+        print('[reproduce_recomb_rsid] Local locus map {} not found!'.format(local_locus_map_file))
+        print('[reproduce_recomb_rsid] Querying SNAP...')
         locus_map = __get_locus_map(r_rsid)
     else:
+        print('[reproduce_recomb_rsid] Loading locus map from {}...'.format(local_locus_map_file))
         locus_map = pd.read_table(local_locus_map_file, header=0)
 
     c_rsid = locus_map.loc[:, 'Proxy'].unique().tolist()
@@ -168,51 +175,30 @@ def missing_50kb_window(r_coord, c_coord, locus_map):
 
 
 if __name__ == '__main__':
-    r_recomb_dfm, c_recomb_dfm, locus_map = reproduce_recomb_rsid(db_config_key='local_hg19',
-                                                                  local_locus_map_file='Locus_Map.tsv')
+    # parser = argparse.ArgumentParser(description="Fetch rsid from HGMD/SNAP.", allow_abbrev=False)
+    #
+    # parser.add_argument('-r', '--rsnp', dest='r_dest', type=str, required=True,
+    #                     help="output file of rSNP rsid")
+    # parser.add_argument('-c', '--csnp', dest='c_dest', type=str, required=True,
+    #                     help="output file of cSNP rsid")
+    #
+    # args = parser.parse_args()
+    #
+    # print("[cerenkov_rsid_osu17] rSNP rsid output: {}; cSNP rsid output: {}".
+    #       format(args.r_dest, args.c_dest))
 
-    c_dfm = missing_maf_filter(c_recomb_dfm)
-    r_dfm = missing_maf_filter(r_recomb_dfm)
+    _r_recomb_dfm, _c_recomb_dfm, _locus_map = reproduce_recomb_rsid(db_config_key='local_hg19',
+                                                                     local_locus_map_file='Locus_Map.tsv')
 
-    c_dfm = missing_50kb_window(r_dfm, c_dfm, locus_map)
+    _c_dfm = missing_maf_filter(_c_recomb_dfm)
+    _r_dfm = missing_maf_filter(_r_recomb_dfm)
 
-    r_dfm.to_csv('OSU17_rsnp.tsv', header=True, index=False, sep='\t')
-    c_dfm.to_csv('OSU17_csnp.tsv', header=True, index=False, sep='\t')
+    _c_dfm = missing_50kb_window(_r_dfm, _c_dfm, _locus_map)
 
-    # print(r_dfm.shape)
-    # print(c_dfm.shape)
+    _r_dfm.to_csv('OSU17_rsnp.tsv', header=True, index=False, sep='\t')
+    _c_dfm.to_csv('OSU17_csnp.tsv', header=True, index=False, sep='\t')
+
+    # print(_r_dfm.shape)
+    # print(_c_dfm.shape)
 
     print("[cerenkov_rsid_osu17] Done!")
-
-# import argparse
-
-# if __name__ == '__main__':
-#     parser = argparse.ArgumentParser(description="Fetch rsid from HGMD/SNAP.", allow_abbrev=False)
-#
-#     parser.add_argument('-r', '--rsnp', dest='r_dest', type=str, required=True,
-#                         help="output file of rSNP rsid")
-#     parser.add_argument('-c', '--csnp', dest='c_dest', type=str, required=True,
-#                         help="output file of cSNP rsid")
-#
-#     args = parser.parse_args()
-#
-#     print("[cerenkov_rsid_osu17] rSNP rsid output: {}; cSNP rsid output: {}".
-#           format(args.r_dest, args.c_dest))
-#
-#     # Original RSNP rsid from HGMD
-#     with HgmdClient() as hgmd_client:
-#         r_rsid = hgmd_client.select_rsid()  # a list
-#
-#
-#
-#
-#     # RSNP
-#     pd.Series(data=r_rsid, name='name').to_csv(args.r_dest, header=True, index=False, sep='\t')
-#
-#     # CSNP
-#     pd.Series(data=c_rsid, name='name').to_csv(args.c_dest, header=True, index=False, sep='\t')
-#
-#     print("[cerenkov_rsid_osu17] Done!")
-
-
-

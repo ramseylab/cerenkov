@@ -5,6 +5,9 @@ import numpy as np
 import chrom_tool as ct
 from allele_tool import flip_allele, parse_bm_alleles_col
 
+
+# TODO refactor!
+
 pd.set_option('display.width', 1000)
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)

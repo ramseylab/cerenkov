@@ -4,30 +4,24 @@ from io import StringIO
 
 # E.g. /home/ramseylab/Git-repo/recomb-rsnp-data
 __BASE_DIR = os.path.dirname(os.path.realpath(__file__))
-# E.g. /home/ramseylab/Git-repo/recomb-rsnp-data/R
-__R_DIR = __BASE_DIR + "/R"
-# E.g. /home/ramseylab/Git-repo/recomb-rsnp-data/source_data
-__SRC_DATA_DIR = __BASE_DIR + "/source_data"
-# E.g. /home/ramseylab/Git-repo/recomb-rsnp-data/source_data/UCSC_DHS
-__DHS_DIR = __SRC_DATA_DIR + "/UCSC_DHS"
-# E.g. /home/ramseylab/Git-repo/recomb-rsnp-data/source_data/GERP
-__GERP_DIR = __SRC_DATA_DIR + "/GERP"
-# E.g. /home/ramseylab/Git-repo/recomb-rsnp-data/source_data/GTEx_Analysis_V4_eQTLs
-__EQTL_DIR = __SRC_DATA_DIR + "/GTEx_Analysis_V4_eQTLs"
-# E.g. /home/ramseylab/Git-repo/recomb-rsnp-data/source_data/FSU_Repli_chip
-__FSU_REPLI_CHIP_DIR = __SRC_DATA_DIR + "/FSU_Repli_chip"
-# E.g. /home/ramseylab/Git-repo/recomb-rsnp-data/source_data/UW_Repli_Seq
-__UW_REPLI_CHIP_DIR = __SRC_DATA_DIR + "/UW_Repli_Seq"
-# E.g. /home/ramseylab/Git-repo/recomb-rsnp-data/source_data/Sanger_TFBS_Summary
-__SANGER_TFBS_SUMMARY_DIR = __SRC_DATA_DIR + "/Sanger_TFBS_Summary"
-# E.g. /home/ramseylab/Git-repo/recomb-rsnp-data/source_data/GIS_ChIA_PET
-__CHIA_PRT_DIR = __SRC_DATA_DIR + "/GIS_ChIA_PET"
-# E.g. /home/ramseylab/Git-repo/recomb-rsnp-data/source_data/CADD
-__CADD_DIR = __SRC_DATA_DIR + "/CADD"
-# E.g. /home/ramseylab/Git-repo/recomb-rsnp-data/source_data/fitCons
-__FITCONS_DIR = __SRC_DATA_DIR + "/fitCons"
-# E.g. /home/ramseylab/Git-repo/recomb-rsnp-data/source_data/Columbia_Eigen_Score
-__EIGEN_DIR = __SRC_DATA_DIR + "/Columbia_Eigen_Score"
+
+__R_DIR = os.path.join(__BASE_DIR, "R")
+
+__SRC_DATA_DIR = os.path.join(__BASE_DIR, "source_data")
+
+__DHS_DIR = os.path.join(__SRC_DATA_DIR, "UCSC_DHS")
+__GERP_DIR = os.path.join(__SRC_DATA_DIR, "GERP")
+__EQTL_DIR = os.path.join(__SRC_DATA_DIR, "GTEx_Analysis_V4_eQTLs")
+__FSU_REPLI_CHIP_DIR = os.path.join(__SRC_DATA_DIR, "FSU_Repli_chip")
+__UW_REPLI_CHIP_DIR = os.path.join(__SRC_DATA_DIR, "UW_Repli_Seq")
+__SANGER_TFBS_SUMMARY_DIR = os.path.join(__SRC_DATA_DIR, "Sanger_TFBS_Summary")
+__CHIA_PRT_DIR = os.path.join(__SRC_DATA_DIR, "GIS_ChIA_PET")
+__CADD_DIR = os.path.join(__SRC_DATA_DIR, "CADD")
+__FITCONS_DIR = os.path.join(__SRC_DATA_DIR, "fitCons")
+__EIGEN_DIR = os.path.join(__SRC_DATA_DIR, "Columbia_Eigen_Score")
+__GWAVA_DIR = os.path.join(__SRC_DATA_DIR, "GWAVA")
+__JASPAR_TFBS_DIR = os.path.join(__SRC_DATA_DIR, "Jaspar_TFBS")
+__AUGMENT_DIR = os.path.join(__SRC_DATA_DIR, "augment_osu_features_datafiles")
 
 
 __PATHS = {
@@ -43,7 +37,10 @@ __PATHS = {
     'chia_pet': __CHIA_PRT_DIR,
     'cadd': __CADD_DIR,
     'fitcons': __FITCONS_DIR,
-    'eigen': __EIGEN_DIR
+    'eigen': __EIGEN_DIR,
+    'gwava': __GWAVA_DIR,
+    'jaspar_tfbs': __JASPAR_TFBS_DIR,
+    'augment': __AUGMENT_DIR
 }
 
 
@@ -52,7 +49,7 @@ def find_directory(name):
 
 
 def run_r_script(filename, args):
-    script_path = find_directory("r") + "/" + filename
+    script_path = os.path.join(find_directory("r"), filename)
 
     if not os.path.isfile(script_path):
         raise FileNotFoundError(script_path + " not found.")
