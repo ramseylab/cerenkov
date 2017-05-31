@@ -70,3 +70,6 @@ Please copy the [UCSC_DHS](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov
 
 Please copy the [UW_Repli_Seq](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov/datafiles_201703/Sanger_TFBS_Summary/) folder to **_source_data_**.
 
+### Augmented OSU Features
+
+Please copy the [augment_osu_features_datafiles](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov/datafiles_201703/augment_osu_features_datafiles/) folder to **_source_data_**.
