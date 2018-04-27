@@ -1,25 +1,44 @@
+## ================================================================================
 ## This file is part of the CERENKOV (Computational Elucidation of the
-## REgulatory NonKOding Variome) software program. CERENKOV is free software:
-## you can redistribute it and/or modify it under the terms of Apache Software
-## License version 2.0 (and incorporated into this package distribution in the
-## file LICENSE).
+## REgulatory NonKOding Variome) software program. CERENKOV is subject to terms
+## and conditions defined in the file "LICENSE.txt", which is part of this
+## CERENKOV software distribution.
 ##
-## This program is distributed in the hope that it will be useful, but WITHOUT
-## ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-## FOR A PARTICULAR PURPOSE.  See the Apache Software License version 2.0 for 
-## details.
+## Title       : cerenkov_script_analyze_ml_results_template.R
+## 
+## Description : Script for analyzing CERENKOV machine-learning results.
 ##
-## Copyright Stephen Ramsey, Oregon State University
-## 2017.03
+##               Reads Rdata input file specified as argument 1 on the cmdline
 ##
+## Usage       : cerenkov_script_analyze_ml_results.R INPUT.Rdata [OUTPUT_DIR/]
+##
+## Note        : For OUTPUT_DIR/, don't include a file prefix as that will be
+##               obtained from the input file name (by removing the ".Rdata" file
+##               suffix)
+##
+## Requires    : reshape2, ggplot2
+##
+## Author      : Stephen A. Ramsey, Oregon State University
+##               https://github.com/saramsey
+## ================================================================================
 
-## cerenkov_analyze_ml_results_compare_models.R -- makes a wide TSV file
-## containing the results from the multi-model comparison carried out by the
-## "cerenkov_ml_compare_models.R" script.  Plots AVGRANK, AUPVR, and AUROC.
-##
-## Stephen A. Ramsey
+library(reshape2)
+library(ggplot2)
 
-load("cerenkov_ml_compare_models.Rdata")
+g_args <- commandArgs(trailingOnly=TRUE)
+g_input_file <- g_args[1]
+print(sprintf("reading file: %s", g_input_file))
+print(sprintf("g_args: %s", g_args))
+
+g_output_file_base_name <- strsplit(g_input_file, ".Rdata")[[1]][1]
+
+if (! is.na(g_args[2])) {
+    g_output_file_base_name <- paste(g_args[2], "/", g_output_file_base_name, sep="")
+} else {
+    g_output_file_base_name <- ""
+}
+
+load(g_input_file)
 
 g_logit <- function(x) {
     stopifnot(x <= 1.0 & x >= 0.0)
@@ -34,30 +53,28 @@ g_ml_performance_results <- g_ml_results$performance_results
 
 hyperparameter_set_type_names <- names(g_ml_performance_results)
 
-library(reshape2)
-
-## for each hyperparameter set type (HPST) name, make one super-wide data frame for each workplan; put on a per-HPST list
+## for each hyperparameter set type (HPST) name, make one super-wide data frame for each classifier; put on a per-HPST list
 g_data_wide <- lapply(g_ml_performance_results, function(df) {
-    df$workplan_id <- as.integer(as.character(df$workplan_id))
-    unique_workplan_ids <- unique(df$workplan_id)
+    df$classifier_id <- as.integer(as.character(df$classifier_id))
+    unique_classifier_ids <- unique(df$classifier_id)
 
     col_classifier_name <- which(names(df) == "classifier_name")
     
     res_df <- data.frame(do.call(rbind,
-                                 lapply(unique_workplan_ids,
-                                        function(workplan_id) {
-                                            inds <- which(df$workplan_id == workplan_id)
+                                 lapply(unique_classifier_ids,
+                                        function(classifier_id) {
+                                            inds <- which(df$classifier_id == classifier_id)
                                             df[inds[1], col_classifier_name:ncol(df)]})),
-                         acast(df, workplan_id ~ replication_id + cv_fold_id, value.var="test_aupvr"),
-                         acast(df, workplan_id ~ replication_id + cv_fold_id, value.var="test_auroc"),
-                         acast(df, workplan_id ~ replication_id + cv_fold_id, value.var="train_aupvr"),
-                         acast(df, workplan_id ~ replication_id + cv_fold_id, value.var="train_auroc"),
+                         acast(df, classifier_id ~ replication_id + cv_fold_id, value.var="test_aupvr"),
+                         acast(df, classifier_id ~ replication_id + cv_fold_id, value.var="test_auroc"),
+                         acast(df, classifier_id ~ replication_id + cv_fold_id, value.var="train_aupvr"),
+                         acast(df, classifier_id ~ replication_id + cv_fold_id, value.var="train_auroc"),
                          stringsAsFactors=FALSE)
     
     nfolds <- max(df$cv_fold_id)
     nreps <- max(df$replication_id)
     col_offset <- ncol(df) - col_classifier_name + 1
-    inds <- which(df$workplan_id == unique_workplan_ids[1])
+    inds <- which(df$classifier_id == unique_classifier_ids[1])
     repfolds <- paste(df$replication_id[inds], df$cv_fold_id[inds], sep="_")
     names(res_df)[(col_offset + 1):(col_offset + nfolds*nreps)] <- paste("test_aupvr", repfolds, sep="_")
     names(res_df)[(col_offset + nfolds*nreps + 1):(col_offset + 2*nfolds*nreps)] <- paste("test_auroc", repfolds, sep="_")
@@ -66,8 +83,8 @@ g_data_wide <- lapply(g_ml_performance_results, function(df) {
 
     if ("train_avgrank" %in% names(df)) {
         res_df <- cbind(res_df,
-                        acast(df, workplan_id ~ replication_id + cv_fold_id, value.var="test_avgrank"),
-                        acast(df, workplan_id ~ replication_id + cv_fold_id, value.var="train_avgrank"))
+                        acast(df, classifier_id ~ replication_id + cv_fold_id, value.var="test_avgrank"),
+                        acast(df, classifier_id ~ replication_id + cv_fold_id, value.var="train_avgrank"))
         names(res_df)[(col_offset + 4*nfolds*nreps + 1):(col_offset + 5*nfolds*nreps)] <- paste("test_avgrank", repfolds, sep="_")
         names(res_df)[(col_offset + 5*nfolds*nreps + 1):(col_offset + 6*nfolds*nreps)] <- paste("train_avgrank", repfolds, sep="_")
 
@@ -79,7 +96,7 @@ g_data_wide <- lapply(g_ml_performance_results, function(df) {
     res_df
 })
 
-all_workplan_ids <- unique(unlist(lapply(g_data_wide, "[[", "workplan_id")))
+all_classifier_ids <- unique(unlist(lapply(g_data_wide, "[[", "classifier_id")))
 
 ## compute the average performance values
 perf_strings <- c("test_aupvr","test_auroc","train_aupvr","train_auroc")
@@ -93,10 +110,10 @@ g_logit_mean <- function(x) {
 
 avg_results <- t(do.call(rbind, lapply(perf_strings,
                       function(string_to_search_with) {
-                          sapply(all_workplan_ids,
-                                 function(workplan_id) {
+                          sapply(all_classifier_ids,
+                                 function(classifier_id) {
                                      unlist(lapply(g_data_wide, function(df) {
-                                         ind <- which(df$workplan_id == workplan_id)
+                                         ind <- which(df$classifier_id == classifier_id)
                                          if (length(ind) == 0) { return(NULL) }
                                          values_to_average <- unlist(df[ind, grep(string_to_search_with, names(df))])
                                          if (length(grep("aupvr|auroc", string_to_search_with)) > 0) {
@@ -112,10 +129,10 @@ colnames(avg_results) <- paste("avg", perf_strings, sep="_")
 
 lower_95ci_results <- t(do.call(rbind, lapply(perf_strings,
                                             function(string_to_search_with) {
-                                                sapply(all_workplan_ids,
-                                                       function(workplan_id) {
+                                                sapply(all_classifier_ids,
+                                                       function(classifier_id) {
                                                            unlist(lapply(g_data_wide, function(df) {
-                                                               ind <- which(df$workplan_id == workplan_id)
+                                                               ind <- which(df$classifier_id == classifier_id)
                                                                if (length(ind) == 0) { return(NULL) }
                                                                values_to_analyze <- unlist(df[ind, grep(string_to_search_with, names(df))])
                                                                if (length(grep("aupvr|auroc", string_to_search_with)) > 0) {
@@ -132,10 +149,10 @@ colnames(lower_95ci_results) <- paste("lower_95ci_", perf_strings, sep="_")
 
 upper_95ci_results <- t(do.call(rbind, lapply(perf_strings,
                                             function(string_to_search_with) {
-                                                sapply(all_workplan_ids,
-                                                       function(workplan_id) {
+                                                sapply(all_classifier_ids,
+                                                       function(classifier_id) {
                                                            unlist(lapply(g_data_wide, function(df) {
-                                                               ind <- which(df$workplan_id == workplan_id)
+                                                               ind <- which(df$classifier_id == classifier_id)
                                                                if (length(ind) == 0) { return(NULL) }
                                                                values_to_analyze <- unlist(df[ind, grep(string_to_search_with, names(df))])
                                                                if (length(grep("aupvr|auroc", string_to_search_with)) > 0) {
@@ -165,7 +182,7 @@ g_wide_df_master <- do.call(rbind, lapply(g_data_wide, function(df) {
 
 
 ## Insert The performance values into the master data frame (making sure the relative row order is not messed up)
-stopifnot(g_wide_df_master$workplan_id == sort(g_wide_df_master$workplan_id))
+stopifnot(g_wide_df_master$classifier_id == sort(g_wide_df_master$classifier_id))
 g_wide_df_final <- cbind(g_wide_df_master[,1:7],
                          avg_results,
                          lower_95ci_results,
@@ -200,69 +217,72 @@ g_wide_df_final <- g_wide_df_final[, c(1:(min(grep("aupvr", names(g_wide_df_fina
                                        ncol(g_wide_df_final),
                                        (min(grep("aupvr", names(g_wide_df_final)))):(ncol(g_wide_df_final)-1))]
 
-col_ind_workplan_id <- which(names(g_wide_df_final)=="workplan_id")
+col_ind_classifier_id <- which(names(g_wide_df_final)=="classifier_id")
 
-## make the workplan the first column
-g_wide_df_final <- g_wide_df_final[, c(col_ind_workplan_id,
-                                       setdiff(1:ncol(g_wide_df_final), col_ind_workplan_id))]
+## make the classifier the first column
+g_wide_df_final <- g_wide_df_final[, c(col_ind_classifier_id,
+                                       setdiff(1:ncol(g_wide_df_final), col_ind_classifier_id))]
+
+output_txt_file_name <- paste(g_output_file_base_name, ".txt", sep="")
+print(sprintf("Output txt file name: %s", output_txt_file_name))
 
 ## save output to a TSV file
 write.table(g_wide_df_final,
-            file="cerenkov_ml_compare_models.txt",
+            file=output_txt_file_name,
             sep="\t",
             row.names=FALSE,
             col.names=TRUE,
             quote=FALSE)
 
 make_results_plot <- function(p_measure_name, p_results_df) {
-    require(ggplot2)
-    
     cols_for_plot <- c(which("single_column_hyperparameters"==names(p_results_df)),
-                       which("workplan_set_name"==names(p_results_df)),
+                       which("classifier_set_name"==names(p_results_df)),
                        setdiff(grep(paste("test", p_measure_name, sep="_"), names(p_results_df)),
                                grep(paste(p_measure_name, "_", sep=""), names(p_results_df))))
 
-    rows_use <- which(! (p_results_df$workplan_set_name %in% c()))  # exclude here
+    rows_use <- which(! (p_results_df$classifier_set_name %in% c()))  # exclude here
     
     df_plot_wide <- p_results_df[rows_use, cols_for_plot]
 
-    library(reshape2)
     df_plot_melted <- data.frame(melt(df_plot_wide,
-                                      id.vars=c("workplan_set_name","single_column_hyperparameters"),
+                                      id.vars=c("classifier_set_name","single_column_hyperparameters"),
                                       measure.vars=c(paste("avg_test", p_measure_name, sep="_")),
                                       value.name=toupper(p_measure_name)),
                                  lower95=melt(df_plot_wide,
-                                              id.vars=c("workplan_set_name"),
+                                              id.vars=c("classifier_set_name"),
                                               measure.vars=c(paste("lower_95ci__test", p_measure_name, sep="_")))$value,
                                  upper95=melt(df_plot_wide,
-                                              id.vars=c("workplan_set_name"),
+                                              id.vars=c("classifier_set_name"),
                                               measure.vars=c(paste("upper_95ci__test", p_measure_name, sep="_")))$value)
 
-    row_inds_use <- which(((df_plot_melted$workplan_set_name %in% c("deltaSVM_XGB",
+    row_inds_use <- which(((df_plot_melted$classifier_set_name %in% c("deltaSVM_XGB",
                                                                     "OSU_XGB",
                                                                     "RSVP_XGB")) &
                                       grepl("scale_pos_weight=1", df_plot_melted$single_column_hyperparameters)) | 
-                                     ! (df_plot_melted$workplan_set_name %in% c("deltaSVM_XGB",
+                                     ! (df_plot_melted$classifier_set_name %in% c("deltaSVM_XGB",
                                                                                 "OSU_XGB",
                                                                                 "RSVP_XGB")))
     df_plot_melted <- df_plot_melted[row_inds_use, ]
                                      
-    workplan_set_names <- as.character(df_plot_melted$workplan_set_name)
-    workplan_set_names <- gsub("_published","",workplan_set_names)
+    classifier_set_names <- as.character(df_plot_melted$classifier_set_name)
+    classifier_set_names <- gsub("_published","",classifier_set_names)
 
     order_decreasing <- ifelse(p_measure_name == "avgrank", TRUE, FALSE)
     
-    df_plot_melted$workplan_set_name <- factor(workplan_set_names,
-                                               levels=workplan_set_names[order(df_plot_melted[[toupper(p_measure_name)]],
+    df_plot_melted$classifier_set_name <- factor(classifier_set_names,
+                                               levels=classifier_set_names[order(df_plot_melted[[toupper(p_measure_name)]],
                                                                                decreasing=order_decreasing)])
 
-    ggplot(df_plot_melted, aes_string(x="workplan_set_name", y=toupper(p_measure_name))) +
+    output_file_name <- paste(g_output_file_base_name, "_", p_measure_name, "_compare_models.pdf", sep="")
+    print(sprintf("Saving plot file %s", output_file_name))
+                              
+    ggplot(df_plot_melted, aes_string(x="classifier_set_name", y=toupper(p_measure_name))) +
         geom_point() +
         theme_gray(base_size=18) +
         theme(axis.title.x=element_blank(),
               axis.text.x=element_text(angle=45, hjust=1)) +
-        geom_errorbar(aes(ymin=lower95, ymax=upper95)) + ggsave(paste(p_measure_name, "_compare_models.pdf", sep=""))
-
+        geom_errorbar(aes(ymin=lower95, ymax=upper95)) +
+        ggsave(output_file_name)
 }                             
 
 if (all(! is.na(g_wide_df_final$avg_test_aupvr))) {
