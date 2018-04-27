@@ -33,7 +33,7 @@ g_configure_ec2_instance_and_connection <- function() {
                                         ## to send a request their tech support, at this link:
                                         ## https://console.aws.amazon.com/support/home?region=us-west-2#/case/create?issueType=service-limit-increase&limitType=service-code-ec2-instances
         num_ip_addresses_per_instance = 1,
-        ami_id = "ami-72c6050a",        ## this is the "ramseyst-CERENKOV" AMI
+        ami_id = "ami-72c6050a",        ## your AMI needs to be an Ubuntu instance with R and all the required R packages installed
         instance_type = "m4.16xlarge",   
         security_group_name = "SPECIFY-AWS-SECURITY-GROUP-HERE",  ## the security group needs to allow inbound traffic on TCP ports 11000-11999
         username = "ubuntu",
