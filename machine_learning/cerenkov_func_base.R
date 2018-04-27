@@ -1,41 +1,32 @@
+## ================================================================================
 ## This file is part of the CERENKOV (Computational Elucidation of the
-## REgulatory NonKOding Variome) software program. CERENKOV is free software:
-## you can redistribute it and/or modify it under the terms of Apache Software
-## License version 2.0 (and incorporated into this package distribution in the
-## file LICENSE).
+## REgulatory NonKOding Variome) software program. CERENKOV is subject to terms
+## and conditions defined in the file "LICENSE.txt", which is part of this
+## CERENKOV software distribution.
 ##
-## This program is distributed in the hope that it will be useful, but WITHOUT
-## ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-## FOR A PARTICULAR PURPOSE.  See the Apache Software License version 2.0 for 
-## details.
-##
-## Copyright Stephen Ramsey, Oregon State University
-## 2017.03
-##
-
-## cerenkov_ml_base.R -- This file defines various functions used in the CERENKOV software.
-##    This file is exclusively function definitions; no evaluations are performed. No function
-##    in this file references any objects in the global environment. This file is loaded
-##    by the various CERENKOV scripts (e.g., cerenkov_ml_compare_models.R) using the "source"
-##    function. At some point this source file will be converted into an R package.
-##
-## Author:  Stephen Ramsey
+## Title       : cerenkov_func_base.R
 ## 
-## Packages required by this script:
-##   PRROC
+## Description : Define global functions for the CERENKOV project.
 ##
-## Packages conditionally required by this script:
-##   xgboost, Matrix, dismo, ranger, methods
-##
-## Note:  do not use this program with Ranger version 0.6.6 (stability issues); use Ranger 0.6.0 only
-##
+##               Each function in this file should satisfy the
+##               following criteria:
+##                 1. it should not not access the global environment
+##                 2. it should be side effect-free, as much as possible
+##                 3. function names should start with "g_" (for "global")
+##                 4. quietly check for required packages at run-time
+## 
+## Author      : Stephen A. Ramsey, Oregon State University
+##               https://github.com/saramsey
+## ================================================================================
+
+## cerenkov_ml_base.R:  here is where I put all the functions that do not reference any global variables
 
 ## --------------- Cerenkov-specific functions start here ---------
 
-## p_workplan_list:  a list of "workplans".  Each workplan is a list with elements:
-##    workplan$classifier_feature_matrix_name: the integer ID of the feature matrix to use for this workplan
-##    workplan$classifier_hyperparameter_list:  the list of hyperparameters to use for this classifier
-##    workplan$classifier_function_name:  the function to be used for training the classifier
+## p_classifier_list:  a list of "classifiers".  Each classifier is a list with elements:
+##    classifier$classifier_feature_matrix_name: the integer ID of the feature matrix to use for this classifier
+##    classifier$classifier_hyperparameter_list:  the list of hyperparameters to use for this classifier
+##    classifier$classifier_function_name:  the function to be used for training the classifier
 ## p_classifier_functions_list:  list of functions, each with signature: function(p_classifier_feature_matrix,
 ##                                                                                p_classifier_hyperparameter_list,
 ##                                                                                p_label_vector,
@@ -43,27 +34,26 @@
 ##                                                                                (train_auroc, train_aupvr, test_auroc, test_aupvr)
 ## p_classifier_feature_matrices_list:  one feature matrix for each type of feature matrix data structure to use **NO CASE LABELS**
 ## p_case_label_vec:  numeric vector containing the feature labels (0 or 1 only)
-## p_func_lapply_first_level:  function(p_X, p_FUNC) returning a list
-## p_func_lapply_second_level:  function(p_X, p_FUNC) returning a list
+## p_func_lapply:  function(p_X, p_FUNC) returning a list
 
-g_run_mult_classifs_mult_hyperparams_cv <- function(p_workplan_list,
-                                                    p_classifier_functions_list,
-                                                    p_classifier_feature_matrices_list,
-                                                    p_case_label_vec,
-                                                    p_num_cv_replications=1,
-                                                    p_num_folds=10,
-                                                    p_func_lapply_first_level=lapply,
-                                                    p_func_lapply_second_level=lapply,
-                                                    p_feature_reducer_functions_list=NULL,
-                                                    p_assign_cases_to_folds) {
+g_run_mult_classifs_mult_hyperparams_cv <- function(p_classifier_list,
+                                                      p_classifier_functions_list,
+                                                      p_classifier_feature_matrices_list,
+                                                      p_case_label_vec,
+                                                      p_num_cv_replications=1,
+                                                      p_num_folds=10,
+                                                      p_func_lapply=lapply,
+                                                      p_feature_reducer_functions_list=NULL,
+                                                      p_assign_cases_to_folds) {
+    
+    ## get list of unique classifier hyperparameter set type names
+    classifier_hyperparameter_set_type_names_unique <- sort(unique(unlist(lapply(p_classifier_list,
+                                                                             function(p_classifier) {
+                                                                                 p_classifier$classifier_hyperparameter_set_type_name
+                                                                             }))))
 
-     classifier_hyperparameter_type_names_unique <- sort(unique(unlist(lapply(p_workplan_list,
-                                                                              function(p_workplan) {
-                                                                                  p_workplan$classifier_hyperparameter_set_type_name
-                                                                              }))))
-
-    ## check if there is at least one workplan on the workplan list
-    stopifnot(length(p_workplan_list) > 0)
+    ## check if there is at least one classifier on the classifier list
+    stopifnot(length(p_classifier_list) > 0)
 
     ## we need to know how many cases there are, in order to assign the cases to cross-validation folds
     num_cases <- unique(sapply(p_classifier_feature_matrices_list, nrow))
@@ -71,178 +61,174 @@ g_run_mult_classifs_mult_hyperparams_cv <- function(p_workplan_list,
         stop("all classifier feature matrices must have equal numbers of cases")
     }
 
+    ## create a list of length equal to the number of replications; each list contains fold assignments for all SNPs
     replications_fold_assignments_list <- replicate(p_num_cv_replications,
                                                     p_assign_cases_to_folds(p_num_folds=p_num_folds,
                                                                             p_case_label_vec=p_case_label_vec),
                                                     simplify=FALSE)
 
-    replications_folds_list_list <- lapply(data.frame(t(expand.grid(1:p_num_cv_replications,
-                                                               1:p_num_folds))),
-                                      function(mycol) {
-                                          list(replication_id=mycol[1],
-                                               fold_id=mycol[2])
-                                      })
+    ## make a workplan list containing triples of classifier ID, replication ID, and CV fold ID
+    work_list <- lapply(setNames(lapply(data.frame(t(expand.grid(1:length(p_classifier_list),
+                                                                 1:p_num_cv_replications,
+                                                                 1:p_num_folds))),
+                                 setNames, c("classifier_id", "replication_id", "fold_id")),
+                                 NULL), as.list)
 
-    ml_global_results_list <- p_func_lapply_first_level(replications_folds_list_list,
-            function(replication_fold_list) {
-                replication_id <- replication_fold_list$replication_id
-                fold_id <- replication_fold_list$fold_id
-                fold_assignments <- replications_fold_assignments_list[[replication_id]]
-                inds_cases_test <- which(fold_id == fold_assignments)
-                if (length(inds_cases_test) == length(fold_assignments)) {
-                    ## this means we have num_folds=1, i.e., no cross-validation; train on all cases, so set test cases to empty vector
-                    inds_cases_test <- c()
-                }
-# ------------- debugging code ------------
-#                print(sprintf("starting workplans for replication %d, fold %d at date/time: %s", replication_id, fold_id, Sys.time()))
-# ------------- debugging code ------------
+    ml_global_results_list <- p_func_lapply(work_list,
+                                            function(p_vec_inds_work) {
+                                                classifier_id <- p_vec_inds_work$classifier_id
+                                                fold_id <- p_vec_inds_work$fold_id
+                                                replication_id <- p_vec_inds_work$replication_id
+                                                
+                                                fold_assignments <- replications_fold_assignments_list[[replication_id]]
+                                                inds_cases_test <- which(fold_id == fold_assignments)
+                                                if (length(inds_cases_test) == length(fold_assignments)) {
+                                                    ## this means we have num_folds=1, i.e., no cross-validation; train on all cases, so set test cases to empty vector
+                                                    inds_cases_test <- c()
+                                                }
 
-                ml_single_results_list <- p_func_lapply_second_level(1:length(p_workplan_list),
-                       function(p_workplan_list_index) {
-                           ## get the workplan
-                           p_workplan <- p_workplan_list[[p_workplan_list_index]]
+                                                classifier_list <- p_classifier_list[[classifier_id]]
 
-                           ## get the integer workplan ID
-                           workplan_id <- names(p_workplan_list)[p_workplan_list_index]
+                                                ## need to know the feature matrix name, so we can retrieve the feature matrix
+                                                classifier_feature_matrix_name <- classifier_list$classifier_feature_matrix_name
 
-# ------------- debugging code ------------
-###                         print(sprintf("Starting workplan ID %s", p_workplan$workplan_set_name))
-# ------------- debugging code ------------
+                                                ## need the classifier's hyperparameter list
+                                                classifier_hyperparameter_list <- classifier_list$classifier_hyperparameter_list
 
-                           ## need to know the feature matrix name, so we can retrieve the feature matrix
-                           classifier_feature_matrix_name <- p_workplan$classifier_feature_matrix_name
+                                                ## need the classifier's hyperparameter set name, which dictates what top-level list slot the results go into
+                                                classifier_hyperparameter_set_type_name <- classifier_list$classifier_hyperparameter_set_type_name
 
-                           ## need the classifier's hyperparameter list
-                           classifier_hyperparameter_list <- p_workplan$classifier_hyperparameter_list
+                                                ## need the classifier's function name so we can look up the classifier function
+                                                classifier_function_name <- classifier_list$classifier_function_name
 
-                           ## need the classifier's hyperparameter set name, which dictates what top-level list slot the results go into
-                           classifier_hyperparameter_set_type_name <- p_workplan$classifier_hyperparameter_set_type_name
+                                                ## need the classifier function so we can run the train/test cycle
+                                                classifier_function <- p_classifier_functions_list[[classifier_function_name]]
+                                                
+                                                save_hyperparameter_list <- classifier_hyperparameter_list
+                                                
+                                                if (is.null(classifier_list$feature_reducer_function_name)) {
+                                                    ## this is the standard case, the classifier doesn't call for using a feature matrix reducer
+                                                    
+                                                    if (! is.null(classifier_feature_matrix_name)) {
+                                                        ## this is the standard case, we don't have a null feature matrix (means a passthrough classifier)
+                                                        feature_matrix <- p_classifier_feature_matrices_list[[classifier_feature_matrix_name]]
+                                                        
+                                                        if (is.null(feature_matrix)) { stop(sprintf("feature matrix %s missing",
+                                                                                                    classifier_feature_matrix_name)) }
+                                                    } else {
+                                                        ## in this case we are using a passthrough classifier (like CADD, Eigen, or fitCons)
+                                                        feature_matrix <- NULL
+                                                        classifier_feature_matrix_name <- "NA"
+                                                    }
+                                                    
+                                                } else {
+                                                    
+                                                    ## we are using a "supervised" feature reducer function, like PLS
+                                                    base_feature_matrix <- p_classifier_feature_matrices_list[[classifier_feature_matrix_name]]
+                                                    if (is.null(base_feature_matrix)) { stop(sprintf("feature matrix %s missing",
+                                                                                                     classifier_feature_matrix_name)) }
+                                                    feature_reducer_function_name <- classifier_list$feature_reducer_function_name
+                                                    feature_reducer_function <- p_feature_reducer_functions_list[[feature_reducer_function_name]]
+                                                    stopifnot( ! is.null(feature_reducer_function))
+                                                    feature_reducer_input_matrix_name <- classifier_list$feature_reducer_input_matrix_name
+                                                    stopifnot( ! is.null(feature_reducer_input_matrix_name))
+                                                    feature_reducer_input_matrix <- p_classifier_feature_matrices_list[[feature_reducer_input_matrix_name]]
+                                                    if (is.null(feature_reducer_input_matrix)) { stop(sprintf("feature matrix %s missing",
+                                                                                                              feature_reducer_input_matrix_name)) }
+                                                    stopifnot( ! is.null(feature_reducer_input_matrix))
+                                                    feature_reducer_hyperparameters_list <- classifier_list$feature_reducer_hyperparameters_list
+                                                    stopifnot( ! is.null(feature_reducer_hyperparameters_list))
+                                                    
+                                                    ## call the feature reducer
+                                                    reduced_feature_matrix <- do.call(feature_reducer_function,
+                                                                                      c(list(p_input_feature_matrix=feature_reducer_input_matrix,
+                                                                                             p_case_label_vec=p_case_label_vec,
+                                                                                             p_inds_cases_test=inds_cases_test),
+                                                                                        feature_reducer_hyperparameters_list))
+                                                    
+                                                    ## combine the reduced feature matrix with the base feature matrix
+                                                    if ("sparseMatrix" %in% methods::is(base_feature_matrix)) {
+                                                        feature_matrix <- Matrix::cBind(base_feature_matrix, reduced_feature_matrix)
+                                                    } else {
+                                                        feature_matrix <- cbind(base_feature_matrix, reduced_feature_matrix)
+                                                    }
+                                                    
+                                                    classifier_feature_matrix_name <- paste(classifier_feature_matrix_name,
+                                                                                            feature_reducer_input_matrix_name, sep="_")
 
-                           ## need the classifier's function name so we can look up the classifier function
-                           classifier_function_name <- p_workplan$classifier_function_name
+                                                    save_hyperparameter_list <- c(save_hyperparameter_list,
+                                                                                  feature_reducer_hyperparameters_list)
+                                                } 
 
-                           ## need the classifier function so we can run the train/test cycle
-                           classifier_function <- p_classifier_functions_list[[classifier_function_name]]
-                           
-                           if (is.null(p_workplan$feature_reducer_function_name)) {
-                               ## this is the standard case, the workplan doesn't call for using a feature matrix reducer
-                               
-                               if (! is.null(classifier_feature_matrix_name)) {
-                                    ## this is the standard case, we don't have a null feature matrix (means a passthrough classifier)
-                                    feature_matrix <- p_classifier_feature_matrices_list[[classifier_feature_matrix_name]]
+                                                classifier_custom_objective_function_parameters_list <- classifier_list$classifier_custom_objective_function_parameters_list
+                                                if (! is.null(classifier_custom_objective_function_parameters_list)) {
+                                                    save_hyperparameter_list <- c(save_hyperparameter_list, classifier_custom_objective_function_parameters_list)
+                                                }
+                                                
+                                                ## train/test the classifier for the specified hyperparameters
+                                                classifier_run_time <- system.time(
+                                                    classifier_ret_list <- classifier_function(p_classifier_feature_matrix=feature_matrix,
+                                                                                               p_classifier_hyperparameter_list=classifier_hyperparameter_list,
+                                                                                               p_label_vector=p_case_label_vec,
+                                                                                               p_inds_cases_test=inds_cases_test,
+                                                                                               p_custom_objective_function_parameters_list=classifier_custom_objective_function_parameters_list) )
 
-                                   if (is.null(feature_matrix)) { stop(sprintf("feature matrix %s missing",
-                                                                                classifier_feature_matrix_name)) }
-                               } else {
-                                   ## in this case we are using a passthrough classifier (like CADD, Eigen, or fitCons)
-                                    feature_matrix <- NULL
-                                    classifier_feature_matrix_name <- "NA"
-                                }
-                                
-                                save_hyperparameter_list <- classifier_hyperparameter_list
-                            } else {
+                                                feat_import_scores <- classifier_ret_list$feat_import_scores
+                                                classifier_ret_list$feat_import_scores <- NULL
+                                                
+                                                if (is.null(save_hyperparameter_list)) {
+                                                    save_hyperparameter_list <- list(classifier_hyperparameters.="")
+                                                }
 
-                                ## we are using a "supervised" feature reducer function, like PLS
-                                base_feature_matrix <- p_classifier_feature_matrices_list[[classifier_feature_matrix_name]]
-                                if (is.null(base_feature_matrix)) { stop(sprintf("feature matrix %s missing",
-                                                                                 classifier_feature_matrix_name)) }
-                                feature_reducer_function_name <- p_workplan$feature_reducer_function_name
-                                feature_reducer_function <- p_feature_reducer_functions_list[[feature_reducer_function_name]]
-                                stopifnot( ! is.null(feature_reducer_function))
-                                feature_reducer_input_matrix_name <- p_workplan$feature_reducer_input_matrix_name
-                                stopifnot( ! is.null(feature_reducer_input_matrix_name))
-                                feature_reducer_input_matrix <- p_classifier_feature_matrices_list[[feature_reducer_input_matrix_name]]
-                                if (is.null(feature_reducer_input_matrix)) { stop(sprintf("feature matrix %s missing",
-                                                                                          feature_reducer_input_matrix_name)) }
-                                stopifnot( ! is.null(feature_reducer_input_matrix))
-                                feature_reducer_hyperparameters_list <- p_workplan$feature_reducer_hyperparameters_list
-                                stopifnot( ! is.null(feature_reducer_hyperparameters_list))
-
-                                ## call the feature reducer
-                                reduced_feature_matrix <- do.call(feature_reducer_function,
-                                                                  c(list(p_input_feature_matrix=feature_reducer_input_matrix,
-                                                                         p_case_label_vec=p_case_label_vec,
-                                                                         p_inds_cases_test=inds_cases_test),
-                                                                    feature_reducer_hyperparameters_list))
-                                
-                                ## combine the reduced feature matrix with the base feature matrix
-                                if ("sparseMatrix" %in% is(base_feature_matrix)) {
-                                    if (! require(Matrix, quietly=TRUE)) { stop("package Matrix is missing") }
-                                    feature_matrix <- cBind(base_feature_matrix, reduced_feature_matrix)
-                                } else {
-                                    feature_matrix <- cbind(base_feature_matrix, reduced_feature_matrix)
-                                }
-                                
-                                classifier_feature_matrix_name <- paste(classifier_feature_matrix_name,
-                                                                        feature_reducer_input_matrix_name, sep="_")
-
-                                save_hyperparameter_list <- c(classifier_hyperparameter_list,
-                                                              feature_reducer_hyperparameters_list)
-                            } 
-
-                            ## train/test the classifier for the specified hyperparameters
-                            classifier_run_time <- system.time(
-                                classifier_ret_list <- classifier_function(feature_matrix,
-                                                                           classifier_hyperparameter_list,
-                                                                           p_case_label_vec,
-                                                                           inds_cases_test) )
-
-                           feat_import_scores <- classifier_ret_list$feat_import_scores
-                           classifier_ret_list$feat_import_scores <- NULL
-                           
-                           if (is.null(save_hyperparameter_list)) {
-                               save_hyperparameter_list <- list(classifier_hyperparameters.="")
-                           }
-
-                           ## create a list of results
-                           ## WARNING:  DO **NOT** ALTER THE ORDER OF THESE LIST ELEMENTS:
-                            list(performance_results=data.frame(c(classifier_ret_list,
-                                                 list(classifier_name=classifier_function_name,
-                                                      classifier_feature_matrix_name=classifier_feature_matrix_name,
-                                                      classifier_hyperparameter_set_type_name=classifier_hyperparameter_set_type_name,
-                                                      classifier_hyperparameters=save_hyperparameter_list,
-                                                      classifier_run_time=setNames(classifier_run_time[1], NULL),
-                                                      workplan_set_name=p_workplan$workplan_set_name,
-                                                      workplan_id=workplan_id,
-                                                      replication_id=replication_id,
-                                                      cv_fold_id=fold_id)),
-                                               stringsAsFactors=FALSE),
-                                 feat_import_scores=feat_import_scores)
-                        })
-            })
-
-    ## invert res_list so that the workplan ID is the top level, and the fold ID is the second level
-    ml_global_results_list_wp_top <- lapply(1:length(p_workplan_list),
-                                            function(p_workplan_list_id) {
-                                                setNames(lapply(ml_global_results_list,
-                                                                "[[",
-                                                                p_workplan_list_id), NULL)
+                                                ## create a list of results
+                                                ## WARNING:  DO **NOT** ALTER THE ORDER OF THESE LIST ELEMENTS, IT WILL BREAK BRITTLE DOWNSTREAM ANALYSIS CODE:
+                                                list(performance_results=data.frame(c(classifier_ret_list,
+                                                                                      list(classifier_name=classifier_function_name,
+                                                                                           classifier_feature_matrix_name=classifier_feature_matrix_name,
+                                                                                           classifier_hyperparameter_set_type_name=classifier_hyperparameter_set_type_name,
+                                                                                           classifier_hyperparameters=save_hyperparameter_list,
+                                                                                           classifier_run_time=setNames(classifier_run_time[1], NULL),
+                                                                                           classifier_set_name=classifier_list$classifier_set_name,
+                                                                                           classifier_id=classifier_id,
+                                                                                           replication_id=replication_id,
+                                                                                           cv_fold_id=fold_id)),
+                                                                                    stringsAsFactors=FALSE),
+                                                     feat_import_scores=feat_import_scores)
                                             })
 
-    ## get the hyperparameter set type name for each workplan
-    classifier_hyperparameter_type_names <- sapply(ml_global_results_list_wp_top,
-            function(p_res_list_for_workplan) {
-                p_res_list_for_workplan[[1]]$performance_results$classifier_hyperparameter_set_type_name })
+    ## invert res_list so that the classifier ID is the top level, and the fold ID is the second level
+    ml_global_results_list_wp_top <- lapply(1:length(p_classifier_list),
+                                            function(p_classifier_list_id) {
+                                                ml_global_results_list[which(sapply(ml_global_results_list,
+                                                                                    function(p_list) {
+                                                                                        p_list$performance_results$classifier_id
+                                                                                    })==p_classifier_list_id)]
+                                            })
     
-    ## divide workplan list into performance results data frames, organized by hyperparameter-set type name
-    ml_global_results_list_hpts_top <- setNames(lapply(classifier_hyperparameter_type_names_unique,
+    ## get the hyperparameter set type name for each classifier
+    classifier_hyperparameter_type_names <- sapply(ml_global_results_list_wp_top,
+            function(p_res_list_for_classifier) {
+                p_res_list_for_classifier[[1]]$performance_results$classifier_hyperparameter_set_type_name })
+    
+    ## divide classifier list into performance results data frames, organized by hyperparameter-set type name
+    ml_global_results_list_hpts_top <- setNames(lapply(classifier_hyperparameter_set_type_names_unique,
             function(p_classifier_hyperparameter_type_name) {
                 hptds_list_list <- ml_global_results_list_wp_top[which(classifier_hyperparameter_type_names == p_classifier_hyperparameter_type_name)]
                 do.call(rbind, lapply(hptds_list_list, function(hptds_list) {
                     do.call(rbind, lapply(hptds_list, "[[", "performance_results"))
                 }))
-            }), classifier_hyperparameter_type_names_unique)
+            }), classifier_hyperparameter_set_type_names_unique)
 
     ## extract feature importance scores, if they were gathered
-    feat_impt_scores <- setNames(lapply(classifier_hyperparameter_type_names_unique,
+    feat_impt_scores <- setNames(lapply(classifier_hyperparameter_set_type_names_unique,
             function(p_classifier_hyperparameter_type_name) {
                 hptds_list_list <- ml_global_results_list_wp_top[which(classifier_hyperparameter_type_names == p_classifier_hyperparameter_type_name)]
                 setNames(lapply(hptds_list_list, function(hptds_list) {
                     lapply(hptds_list, "[[", "feat_import_scores")
                 }), sapply(hptds_list_list, function(htps_list) {
-                    htps_list[[1]]$performance_results$workplan_set_name
+                    htps_list[[1]]$performance_results$classifier_set_name
                 }))
-            }), classifier_hyperparameter_type_names_unique)
+            }), classifier_hyperparameter_set_type_names_unique)
 
     list(performance_results=ml_global_results_list_hpts_top,
          feature_impt_scores=feat_impt_scores)
@@ -303,6 +289,8 @@ g_make_calculate_avgrank_within_groups <- function(p_case_group_ids, p_group_to_
     }
 }
 
+
+
 g_interval_clipper <- function(u) {
     pmax(pmin(u, 1.0), 0.0)
 }
@@ -331,10 +319,6 @@ g_make_get_perf_results <- function(p_calculate_aupvr,
         p_prediction_scores_rand <- p_prediction_scores[rand_order]
         p_labels_rand <- p_labels[rand_order]
         
-        if (! require(PRROC, quietly=TRUE)) {
-            stop("package PRROC is missing")
-        }
-
         aupvr <- p_calculate_aupvr(p_prediction_scores_rand,
                                    p_labels_rand)
 
@@ -358,7 +342,7 @@ g_make_get_perf_results <- function(p_calculate_aupvr,
 }
 
 ## function constructor for the "ranger" classifier
-## NOTE:  ranger version 0.6.0 appears to leak memory when "probability=TRUE"
+## NOTE:  ranger leaks memory pretty badly when "probability=TRUE"
 g_make_classifier_function_ranger <- function(p_nthread=1, p_get_perf_results, p_feature_importance_type=NULL) {
 
     if (! suppressWarnings( require(ranger, quietly=TRUE) ) ) {
@@ -377,16 +361,15 @@ g_make_classifier_function_ranger <- function(p_nthread=1, p_get_perf_results, p
     function(p_classifier_feature_matrix,
              p_classifier_hyperparameter_list,
              p_label_vector,
-             p_inds_cases_test) {
+             p_inds_cases_test,
+             p_custom_objective_function_parameters_list=NULL) {
+
         if (! require(ranger, quietly=TRUE)) {
             stop("package ranger is missing")
         }
-        if (! require(methods, quietly=TRUE)) {
-            stop("package methods is missing")
-        }
 
         stopifnot( ! is.null(p_classifier_feature_matrix))
-        stopifnot(length(grep("data.frame|matrix", is(p_classifier_feature_matrix))) > 0)
+        stopifnot(length(grep("data.frame|matrix", methods::is(p_classifier_feature_matrix))) > 0)
         stopifnot(is.vector(p_label_vector))
         stopifnot(is.numeric(p_label_vector))
         stopifnot(sort(unique(p_label_vector)) == c(0,1))
@@ -465,6 +448,16 @@ g_make_classifier_function_ranger <- function(p_nthread=1, p_get_perf_results, p
             } else {
                 test_pred_scores <- apply(test_pred_res - 1, 1, mean)
             }
+
+            if (any(is.nan(test_pred_scores))) {
+                print(sprintf("number of NaN values in ranger prediction scores: %d", length(which(is.nan(test_pred_scores)))))
+                print("ranger hyperparameter set: ")
+                print(p_classifier_hyperparameter_list)
+                test_pred_scores[is.nan(test_pred_scores)] <- 0.5
+            }
+        
+            test_perf_results <- p_get_perf_results(test_pred_scores, test_labels, p_inds_cases_test)
+            
         } else {
             test_perf_results <- list(auroc=NA, aupvr=NA)
             if (! is.null(train_perf_results$avgrank)) {
@@ -472,15 +465,6 @@ g_make_classifier_function_ranger <- function(p_nthread=1, p_get_perf_results, p
                                        list(avgrank=NA))
             }
         }
-        
-        if (any(is.nan(test_pred_scores))) {
-            print(sprintf("number of NaN values in ranger prediction scores: %d", length(which(is.nan(test_pred_scores)))))
-            print("ranger hyperparameter set: ")
-            print(p_classifier_hyperparameter_list)
-            test_pred_scores[is.nan(test_pred_scores)] <- 0.5
-        }
-        
-	test_perf_results <- p_get_perf_results(test_pred_scores, test_labels, p_inds_cases_test)
 
         ret_list <- list(train_auroc=train_perf_results$auroc,
                          train_aupvr=train_perf_results$aupvr,
@@ -502,14 +486,29 @@ g_make_classifier_function_ranger <- function(p_nthread=1, p_get_perf_results, p
     }
 }       
 
-g_make_custom_xgboost_objective <- function(p_weight_pos_cases) {
-    function(preds, dtrain) {
-        labels <- getinfo(dtrain, "label")
-        weights <- rep(1, length(preds))
-        weights[labels==1] <- 0.5
-        my_loss_function_gradient_values <- weights*(preds - labels)
-        ##  calculate your loss function gradient here
-        list(grad=my_loss_function_gradient_values, hess=rep(1, length(labels)))
+
+## Requires: Rcpp
+## The purpose of this function is to enable running an Rcpp-defined function in
+## a "worker process" via R's parallel framework, without getting the error
+## "NULL value passed as symbol address". This code is based on a code example
+## that Roman Francois posted on the gmane.comp.lang.r.rcpp mailing list, 26th
+## Sept. 2013.
+g_make_cxx_function_with_lazy_compile <- function(p_code, p_func_get_temp_directory, ...) {
+    function(...) {
+        temp_directory <- p_func_get_temp_directory()
+        do.call(Rcpp::cppFunction, list(code=p_code, cacheDir=temp_directory))(...)
+    }
+}
+
+## Workaround because Rcpp cppFunction doesn't play nice with multicore parallel;
+## by default, all worker processes use the same cache directory and that leads
+## to badness because they are randomly erasing one another's cached CPP files.
+g_make_make_temp_dir_if_doesnt_exist <- function(p_get_temp_directory) {
+    function(...) {
+        temp_directory <- p_get_temp_directory()
+        if (! file.exists(temp_directory)) {
+            dir.create(temp_directory)
+        }
     }
 }
 
@@ -517,8 +516,9 @@ g_make_custom_xgboost_objective <- function(p_weight_pos_cases) {
 g_make_classifier_function_xgboost <- function(p_nthread=1,
                                                p_get_perf_results,
                                                p_feature_importance_type=NULL,
-                                               p_objective_function="binary:logistic",
-                                               p_case_group_ids=NULL) {
+                                               p_make_objective_function=function(...){"binary:logistic"},
+                                               p_case_group_ids=NULL,
+                                               p_verbose=0) {
 
     if (! require(xgboost, quietly=TRUE)) {
         stop("package xgboost is missing")
@@ -527,11 +527,12 @@ g_make_classifier_function_xgboost <- function(p_nthread=1,
     nthread_third_level_list <- list(nthread=p_nthread)
 
     avg_group_size_ncases <- mean(table(p_case_group_ids))
-        
+
     function(p_classifier_feature_matrix,
              p_classifier_hyperparameter_list,
              p_label_vector,
-             p_inds_cases_test) {
+             p_inds_cases_test,
+             p_custom_objective_function_parameters_list=NULL) {
 
         ## load xgboost package; we will need it to assign cases to cross-validation folds
         if (! require(xgboost, quietly=TRUE)) {
@@ -539,7 +540,7 @@ g_make_classifier_function_xgboost <- function(p_nthread=1,
         }
     
         stopifnot( ! is.null(p_classifier_feature_matrix))
-        stopifnot(length(grep("dgCMatrix|matrix", is(p_classifier_feature_matrix))) > 0)
+        stopifnot(length(grep("dgCMatrix|matrix", methods::is(p_classifier_feature_matrix))) > 0)
         stopifnot(is.vector(p_label_vector))
         stopifnot(is.numeric(p_label_vector))
         stopifnot(sort(unique(p_label_vector)) == c(0,1))
@@ -554,22 +555,29 @@ g_make_classifier_function_xgboost <- function(p_nthread=1,
 
         ## when we upgrade to newer xgboost that has row-based subsetting of xgb.DMatrix objects, this code to move to cerenkov_ml.R
         model_data <- xgb.DMatrix(p_classifier_feature_matrix[inds_cases_training, ], label=train_labels, missing=NA)
+
+        if (! is.null(p_custom_objective_function_parameters_list)) {
+            custom_objective_function_parameters_list <- p_custom_objective_function_parameters_list
+        } else {
+            custom_objective_function_parameters_list <- list()
+        }
+        
+        objective_function <- p_make_objective_function(inds_cases_training,
+                                                        p_custom_objective_function_parameters_list=custom_objective_function_parameters_list)
         
         xgb_params <- c(p_classifier_hyperparameter_list,
-                       list(objective=p_objective_function))
+                       list(objective=objective_function))
 
         xgb_model <- xgb.train(params=xgb_params,
                                data=model_data,
                                nrounds=p_classifier_hyperparameter_list$nrounds,
-                               verbose=0,
+                               verbose=p_verbose,
                                nthread=p_nthread)
-       
+        
         if (! is.null(p_feature_importance_type)) {
-            dump_file_name <- tempfile("xgb_dump")
-            xgb.dump(xgb_model, fname=dump_file_name, with.stats=TRUE)
-            feat_import_scores <- as.data.frame(xgb.importance(feature_names=colnames(p_classifier_feature_matrix),
-                                                               filename_dump=dump_file_name))
-            file.remove(dump_file_name)
+            feat_import_scores <- as.data.frame(xgb.importance(model=xgb_model))
+            feat_names_vec <- colnames(p_classifier_feature_matrix)
+            feat_import_scores$Feature <- feat_names_vec[1 + as.integer(feat_import_scores$Feature)]
         } else {
             feat_import_scores <- NULL
         }
@@ -578,12 +586,12 @@ g_make_classifier_function_xgboost <- function(p_nthread=1,
                                      p_classifier_feature_matrix[inds_cases_training, ],
                                      missing=NA)
         
-        ## this is a work-around for bug # 1503 in xgboost (see GitHub); might have been fixed in latest release of R xgboost package
+        ## \/\/\/\/   this is a work-around for bug # 1503 in xgboost (see GitHub); might have been fixed in latest release of R xgboost package
         n_train_pred_scores <- length(train_pred_scores)
         if (length(train_pred_scores) < length(train_labels)) {
             train_labels <- train_labels[1:length(train_pred_scores)]
         }
-        ## this is a work-around for bug # 1503 in xgboost (see GitHub); might have been fixed in latest release of R xgboost package
+        ## /\/\/\/\   this is a work-around for bug # 1503 in xgboost (see GitHub); might have been fixed in latest release of R xgboost package
 
         stopifnot(length(train_pred_scores) == length(train_labels))
 
@@ -594,12 +602,12 @@ g_make_classifier_function_xgboost <- function(p_nthread=1,
                                         p_classifier_feature_matrix[p_inds_cases_test,],
                                         missing=NA)
 
-            ## this is a work-around for bug # 1503 in xgboost (see GitHub); might have been fixed in latest release of R xgboost package
+            ## \/\/\/\/   this is a work-around for bug # 1503 in xgboost (see GitHub); might have been fixed in latest release of R xgboost package
             n_test_pred_scores <- length(test_pred_scores)
             if (length(test_pred_scores) < length(test_labels)) {
                 test_labels <- test_labels[1:length(test_pred_scores)]
             }
-            ## this is a work-around for bug # 1503 in xgboost (see GitHub); might have been fixed in latest release of R xgboost package
+            ## /\/\/\/\   this is a work-around for bug # 1503 in xgboost (see GitHub); might have been fixed in latest release of R xgboost package
 
             stopifnot(length(test_labels) == length(test_pred_scores))
             
@@ -668,21 +676,74 @@ g_make_classifier_function_passthrough <- function(p_scores_vec, p_get_perf_resu
     }
 }
 
+g_feature_reducer_pls <- function(p_input_feature_matrix,
+                                  p_case_label_vec,
+                                  p_inds_cases_test,
+                                  p_num_components) {
+    stopifnot( ! is.null(p_num_components) )
+    
+    if (! suppressWarnings( require(pls, quietly=TRUE) ) ) { stop("package pls is missing") }
+    if (! require(methods, quietly=TRUE)) { stop("package methods is missing") }
+    
+    p_input_feature_matrix_as_df <- data.frame(pls.x=I(p_input_feature_matrix))
+    p_input_feature_matrix_as_df$label <- I(model.matrix(~y-1, data.frame(y=factor(p_case_label_vec))))
+    
+    inds_cases_train <- setdiff(1:length(p_case_label_vec), p_inds_cases_test)
+    
+    pls_model <- cppls(label ~ pls.x, data=p_input_feature_matrix_as_df[inds_cases_train,], ncomp=p_num_components)
+    
+    pls_pred <- predict(pls_model, p_input_feature_matrix_as_df, type="scores")
+}
+
+#' Grid-expands lists of possible values for each hyperparameter, into tuples
+#'
+#' This function accepts a list of lists (one list for each type of
+#' hyperparameter). The inner list contains possible values for the
+#' hyperparameter. The function grid-expands the hyperparameter values
+#' and returns a list of hyperparameter tuple lists.
+#'
+#' @param p_param_list_values A named list of lists; names are hyperparameter
+#'     names, and values are lists of possible values for the hyperparameters.
+#' @return A list of hyperparameter tuple lists, obtained by grid-expanding the
+#'     list of lists of hyperparameter values passed in
+#'     \code{p_param_list_values}.
+#' @seealso
+#' @rdname g_make_hyperparameter_grid_list
+#' @export
+#' @importFrom
+#' @author Stephen A. Ramsey, \email{stephen.ramsey@@oregonstate.edu}
 g_make_hyperparameter_grid_list <- function(p_param_list_values) {
     hyperparams_df <- expand.grid(p_param_list_values, stringsAsFactors=FALSE)
     hyperparams_list <- lapply(setNames(split(hyperparams_df, seq(nrow(hyperparams_df))), NULL), as.list)
     hyperparams_list <- lapply(hyperparams_list, function(p_list) { attr(p_list, "out.attrs") <- NULL; p_list })
 }
 
-## This function makes sure that the data frame (or matrix) contains no NaN values and
-## no factors with more than 64 levels.  Note:  NA values are allowed for XGboost but not RF.
+#' Returns \code{TRUE} if the argument is a valid feature matrix, or
+#' \code{FALSE} if it is not.
+#'
+#' This function makes sure that the data frame (or matrix) contains no NaN
+#' values and no factors with more than 64 levels.  Returns \code{TRUE} if the
+#' data frame argument is a valid feature matrix, or \code{FALSE} if it is
+#' not. Validity depends on the data frame passing all of the following tests:
+#' (1) no categorical (factor) column can contain more than 64 levels; and (2)
+#' no NaN values.
+#'
+#' @param p_feature_matrix A data frame or matrix containing the feature
+#'     data. Each row corresponds to a case, and each column corresponds to a
+#'     feature.
+#' @return \code{TRUE} if the feature matrix is valid; \code{FALSE} if it is
+#'     not.
+#' @seealso
+#' @rdname g_feature_matrix_is_OK
+#' @export
+#' @importFrom
+#' @author Stephen A. Ramsey, \email{stephen.ramsey@@oregonstate.edu}
 g_feature_matrix_is_OK <- function(p_feature_matrix) {
-    if (! require(methods, quietly=TRUE)) { stop("package methods is missing") }
-    if ("matrix" %in% is(p_feature_matrix)) {
+    if ("matrix" %in% methods::is(p_feature_matrix)) {
         all(! is.nan(p_feature_matrix)) &
             all(apply(p_feature_matrix, 2,
                       function(mycol) {
-                          if("integer" %in% is(mycol)) {
+                          if("integer" %in% methods::is(mycol)) {
                               length(unique(mycol)) <= 64
                           } else {
                               TRUE
@@ -701,6 +762,29 @@ g_feature_matrix_is_OK <- function(p_feature_matrix) {
     }
 }
 
+#' Return string locus IDs for each of a group of SNPs
+#'
+#' Given chromosomal coordinate information about a set of SNPs and a
+#' user-specified inter-SNP distance cutoff in base pairs (default 50,000),
+#' assigns each SNP to a locus, numbers the loci, and returns a character vector
+#' (of length equal to the number of SNPs) containing the string lables of the
+#' loci to which the SNPs are assigned (each SNP is assigned to one locus).
+#'
+#' @param p_snp_locus_coords A data frame whose number of rows is equal to the
+#' number of SNPs, and whose row names are the SNP IDs, and that contains
+#' two columns.  First column is named "chrom", which contains the chromosome
+#' IDs as strings, and the second column is named "coord", which contains the
+#' SNP coordinates as integers.
+#' @param p_coord_distance_cutoff_bp A positive integer specifying the inter-SNP
+#' distance cutoff for assigning SNPs to loci. For each chromosome, the nearest-neighbor
+#' inter-SNP distances are calculated, and the chromosome-specific SNPs
+#' are partitioned into loci wherever the inter-SNP distance exceeds the cutoff.
+#' @return A character vector containing the string locus IDs for the SNPs.
+#' @seealso
+#' @rdname g_get_snp_locus_ids
+#' @export
+#' @importFrom
+#' @author Stephen A. Ramsey, \email{stephen.ramsey@@oregonstate.edu}
 g_get_snp_locus_ids <- function(p_snp_locus_coords, 
                                 p_coord_distance_cutoff_bp=50000) {
     snp_chroms <- as.character(p_snp_locus_coords$chrom)
@@ -719,25 +803,95 @@ g_get_snp_locus_ids <- function(p_snp_locus_coords,
            }))[rownames(p_snp_locus_coords)]
 }
 
+
+#' Assign cases to folds using stratified sampling
+#'
+#' Returns an integer vector (of length \code{N} equal to the number of cases)
+#' in which each entry is the cross-validation fold assigment of the corresponding
+#' case. 
+#'
+#' @param p_num_folds A positive integer specifying the number of
+#'     cross-validation folds
+#' @param p_case_label_vec An integer vector (of length \code{N}) containing the
+#'     case labels (0 = negative case, 1 = positive case)
+#' @return An integer vector of length \code{N} whose values are all in the
+#'     range \code{1:p_num_folds}, giving the fold assignment for each case
+#' @seealso 
+#'  \code{\link[dismo]{kfold}}
+#' @rdname g_assign_cases_to_folds_by_case
+#' @export 
+#' @importFrom dismo kfold
+#' @author Stephen A. Ramsey, \email{stephen.ramsey@@oregonstate.edu}
 g_assign_cases_to_folds_by_case <- function(p_num_folds,
                                             p_case_label_vec) {
     
-    if (! suppressWarnings( require(dismo, quietly=TRUE) ) ) {
-        stop("package dismo is missing")
-    }
-
+    stopifnot(g_check_cross_validation_num_folds_not_too_big(p_num_folds, p_case_label_vec))
+    
     num_cases <- length(p_case_label_vec)
-    kfold(1:num_cases,
-          k=p_num_folds,
-          by=p_case_label_vec)
+    dismo::kfold(1:num_cases,
+                 k=p_num_folds,
+                 by=p_case_label_vec)
 }
 
+#' Assign cases to folds by group.
+#'
+#' Returns a function that will generate a vector of integer fold assignments
+#' for cases to cross-validation folds, while maintaining class balance in the
+#' folds and ensuring that all cases from a group are assigned to the same fold
+#' together.
+#'
+#' @param p_case_group_ids Length \code{N} vector of group IDs (which can be
+#'     character or integer).
+#' @param p_slop_allowed A numeric scalar indicating the maximum amount by which
+#'     the number of positive cases in a group can exceed the expected number
+#'     (0.5 would mean that the actual number of positive cases in group can
+#'     never exceed 1.5-fold the expected number). Default: 0.5.
+#' @return A function with calling signature (\code{p_num_folds},
+#'     \code{p_case_label_vec}). That function returns an integer vector of
+#'     length \code{N} whose values are in the range \code{1:p_num_folds}, where
+#'     \code{p_num_folds} is the number of folds for the cross-validation (i.e.,
+#'     in ten-fold cross-validation, \code{p_num_folds=10}.
+#' @author Stephen A. Ramsey, \email{stephen.ramsey@@oregonstate.edu}
 g_make_assign_cases_to_folds_by_group <- function(p_case_group_ids, p_slop_allowed=0.5) {
 
     p_case_group_ids ## force R to evaluate the promise argument, so it is stored with the closure
 
+    #' Return true/false depending on whether the number of CV folds is too large
+    #'
+    #' Returns true if the number of CV folds (passed as an argument) is not too
+    #' large for the dataset, or false if the number of CV folds is too large for
+    #' the dataset (i.e., greater than the number of positive cases, so stratified
+    #' CV is not possible).  The purpose of this function is just to be used as a
+    #' sanity check against user misconfiguration error (i.e., user switches the
+    #' number of desired replications with the number of desired CV folds, in setting
+    #' configuration parameter list for CERENKOV.
+    #'
+    #' @param p_num_folds A positive integer indicating the number of folds for the
+    #'     CV
+    #' @param p_case_label_vec A binary {0,1} integer vector (of length equal to the
+    #'     number of cases) containing the class labels of the cases.  # @return
+    #'     \code{TRUE} if the number of CV folds (passed as an argument) is not too
+    #'     large for the dataset, or \code{FALSE} if the number of CV folds is too
+    #'     large for the dataset (i.e., greater than the number of positive cases,
+    #'     so stratified CV is not possible).
+    #' @return \code{TRUE} if the number of CV folds (passed as an argument) is not
+    #'     too large for the dataset, or \code{FALSE} if the number of CV folds is
+    #'     too large for the dataset
+    #' @seealso
+    #' @rdname g_check_cross_validation_num_folds_not_too_big
+    #' @export
+    #' @importFrom
+    #' @author Stephen A. Ramsey, \email{stephen.ramsey@@oregonstate.edu}
+    check_cross_validation_num_folds_not_too_big <- function(p_num_folds, p_case_label_vec) {
+        npos <- length(which(p_case_label_vec==1))
+        nneg <- length(which(p_case_label_vec==0))
+        p_num_folds < length(p_case_label_vec)/(nneg/npos + 1)
+    }
+    
     function(p_num_folds, p_case_label_vec) {
 
+        stopifnot(check_cross_validation_num_folds_not_too_big(p_num_folds, p_case_label_vec))
+    
         table_res <- table(p_case_group_ids, p_case_label_vec)
         group_pos_counts <- table_res[,2]
         stopifnot(group_pos_counts > 0)  ## there should be an rSNP in every group!
@@ -769,40 +923,96 @@ g_make_assign_cases_to_folds_by_group <- function(p_case_group_ids, p_slop_allow
             pos_case_counts_for_folds[fold_assignment] <- pos_case_counts_for_folds[fold_assignment] + group_pos_count
         }
         ret_case_fold_assignments <- setNames(group_fold_assignments[p_case_group_ids], NULL)
+        stopifnot(max(ret_case_fold_assignments)==p_num_folds)
+        stopifnot(min(ret_case_fold_assignments)==1)
+        stopifnot(all(! is.nan(ret_case_fold_assignments)))
+        stopifnot(all(! is.na(ret_case_fold_assignments)))
+        stopifnot(all(is.integer(ret_case_fold_assignments)))
         ret_case_fold_assignments
     }
 }
 
-## whatever function you pass as the first argument, conditionally makes it an
-## "error handling" function depending on the third argument (this is because we
-## don't want to use tryCatch when we are debugging, only when we are running in
-## production)
+#' Make a function that runs a classification task within an error-catching context.
+#'
+#' Runs a user-supplied function in a tryCatch block, and if there is a warning
+#' or error, passes the warning/error text to a user-specified message
+#' notification function.
+#'
+#' @param p_classifier_runner_func A user-supplied classification task function
+#'     (that is called with no arguments)
+#' @param p_send_message_notification A user-specified function for error
+#'     handling (which prints the error/warning text and, depending on
+#'     configuration, optionally sends the error message text in an SMS message)
+#' @return The wrapper function that (when called) will run the classification
+#'     task within an error-catching context.
+#' @author Stephen A. Ramsey, \email{stephen.ramsey@@oregonstate.edu}
 g_make_classifier_runner_func_err_handling <- function(p_classifier_runner_func,
-                                                       p_send_message_notification,
-                                                       p_cluster) {
-    
-    if (! is.null(p_cluster)) {
-        res_func <- function() {
-            tryCatch( { p_classifier_runner_func() },
-                     warning=function(w) { p_send_message_notification(w); NULL },
-                     error=function(e) { p_send_message_notification(e); NULL })
-        }
-    } else {
-        res_func <- p_classifier_runner_func
-    }
-
-    res_func
-}
-
-g_make_cluster_cleanup_function <- function(p_cluster, p_ec2_instances=NULL) {
+                                                       p_send_message_notification) {
     function() {
-        if(! is.null(p_cluster)) {
-            stopCluster(p_cluster)
-        }
-
-        if(! is.null(p_ec2_instances)) {
-            terminate_instances(p_ec2_instances)
-        }        
+        tryCatch( { p_classifier_runner_func() },
+                 warning=function(w) { p_send_message_notification(w); NULL },
+                 error=function(e) { p_send_message_notification(e); NULL })
     }
 }
 
+#' Verify that singleton groups contain only positive cases
+#'
+#' Checks to make sure that any singleton case groups (i.e., groups with only
+#' one case belonging to each of them) are only associated with cases that are
+#' positive class labels.
+#'
+#' @param p_labels Integer vector of length equal to the number of cases. In
+#'     each vector entry, value 0 means that the case is a negative case, and
+#'     value 1 means that the case is a positive case.
+#' @param p_group_to_case_map_list a list of length \code{unique(p_case_groups)}
+#'     (see \code{\link{g_make_gorup_to_case_ids_map_list}}) in which each
+#'     element (corresponding to a single group) contains an integer vector of
+#'     case IDs of the cases that belong to that group.
+#' @return \code{TRUE} or \code{FALSE} indicating whether or not all singleton
+#'     groups contain only positive cases.
+#' @author Stephen A. Ramsey, \email{stephen.ramsey@@oregonstate.edu}
+g_verify_that_singleton_groups_are_all_positive_cases <-
+    function(p_labels,
+             p_group_to_case_map_list) {
+        num_cases_per_group <- sapply(p_group_to_case_map_list, length)
+        all(p_labels[unlist(p_group_to_case_map_list[names(num_cases_per_group[num_cases_per_group==1])])]==1)
+    }
+
+#' Make the group-to-case-ids mapping list
+#' 
+#' From a vector containing the group IDs of a set of N cases (case IDs are
+#' presumed numbered 1:N), return a list (of length equal to the number of
+#' unique group IDs) mapping group ID to the case IDs of the cases that are
+#' associated with the group ID.
+#'
+#' @param p_case_groups Length N vector of group IDs (which can be character or
+#'     integer).
+#' @return a list of length \code{unique(p_case_groups)} in which each element
+#'     (corresponding to a single group) contains an integer vector of case IDs
+#'     of the cases that belong to that group.
+#' @author Stephen A. Ramsey, \email{stephen.ramsey@@oregonstate.edu}
+g_make_group_to_case_ids_map_list <- function(p_case_groups) {
+    unique_group_ids <- unique(p_case_groups)
+    setNames(lapply(unique_group_ids, function(p_group_id) {
+        which(p_case_groups == p_group_id)
+    }), unique_group_ids)
+}
+
+g_get_args_after_hyphen_hyphen_args <- function(p_rscript_args) {
+    ind_match <- which("--args" == p_rscript_args)
+    if (length(ind_match) > 0) {
+        p_rscript_args[(ind_match+1):length(p_rscript_args)]
+    } else {
+        NA
+    }
+}
+
+g_get_script_name_from_rscript_args <- function(p_rscript_args) {
+    ind_match <- grep("--file=", p_rscript_args)
+    stopifnot(length(ind_match) > 0)
+    gsub("--file=", "", p_rscript_args[ind_match])
+}
+
+#g_get_temp_dir <- function() {
+#    file.path(tempdir())
+#}
