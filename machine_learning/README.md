@@ -1,9 +1,49 @@
 # CERENKOV R scripts #
 
-To reproduce the results of our article *CERENKOV:* *Computational* 
-*Elucidation* *of* *the* *Regulatory* *Noncoding* *Variome* 
-the following R scripts can be run in the R statistical computing
-environment (version 3.2.1):
+
+# Guide to current CERENKOV machine-learning R code:
+
+- `cerenkov_func_base.R`: Defines global functions for the CERENKOV project.
+
+- `cerenkov_func_aws.R`: Define global functions related to AWS, for the
+  CERENKOV project.
+
+- `cerenkov_incscript_setup_ml.R`: Code that is sourced by a
+`cerenkov_script_XXXXXX.R` script in order to setup the machine-learning job.  I
+put code in this file if it would otherwise be boilerplate in *every* script of
+the form `cerenkov_script_XXXXXX.R`.
+          
+- `cerenkov_incscript_setup_ml.R`: Code that is sourced by a
+`cerenkov_script_XXXXXX.R` script in order to setup an EC2 instance for running
+the machine-learning job.  I put code in this file if it would otherwise be
+boilerplate in *every* script of the form `cerenkov_script_XXXXXX.R`.
+
+- `cerenkov_incscript_run_ml.R`: Code that is sourced by a `cerenkov_script_XXXXXX.R` script in
+order to run the machine-learning job.
+
+- `cerenkov_script_run_ml_template.R`: A template script for running a CERENKOV machine-learning
+analysis.
+
+- `cerenkov_script_analyze_ml_results_template.R`: A template script for analyzing, reducing, and
+plotting the results of a CERENKOV machine-learning run.
+
+The functions defined by the `cerenkov_func_` scripts all satisfy fhe following four properties:
+1. it should not not access the global environment
+2. it should be side effect-free, as much as possible
+3. function names should start with "g_" (for "global")
+4. quietly checks for required packages at run-time
+
+The R scripts of the form `cerenkov_incscript_` are run by being called by `source` from
+a top-level `cerenkov_script_` script.
+
+# Reproducing the results of the 2017 ACM-BCB article:
+
+To reproduce the results of our article *CERENKOV:* *Computational*
+*Elucidation* *of* *the* *Regulatory* *Noncoding* *Variome* the following R
+scripts from release **v0.1-alpha** of the project can be run in the R
+statistical computing environment (version 3.2.1).
+
+## Guide to source code files in CERENKOV v0.1-alpha:
 
 - `cerenkov_ml_compare_models.R`: obtains the comparative machine-learning
 performance results that were used to make Figure 3 of the article (the script
@@ -30,7 +70,7 @@ parallel, xgboost (version 0.6-4), Matrix, and pbapply. The
 ggplot2 and reshape2.
 
 
-# Data files for download
+## Data files for download
 
 The following .Rdata files (the "201703 data supplement" for CERENKOV) accompany
 the article *CERENKOV: Computational elucidation of the regulatory noncoding
