@@ -35,7 +35,7 @@ g_configure_ec2_instance_and_connection <- function() {
         num_ip_addresses_per_instance = 1,
         ami_id = "ami-72c6050a",        ## this is the "ramseyst-CERENKOV" AMI
         instance_type = "m4.16xlarge",   
-        security_group_name = "ramseyst-CERENKOV",
+        security_group_name = "SPECIFY-AWS-SECURITY-GROUP-HERE",  ## the security group needs to allow inbound traffic on TCP ports 11000-11999
         username = "ubuntu",
         network_interface_device_name = "ens3",  ## NOTE:  this interface name is probably ubuntu-specific
         subnet_cidr_suffix = 20,        ## means it's a /20
