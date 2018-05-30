@@ -75,7 +75,9 @@ g_assign_cases_to_folds <- ifelse( g_par$flag_locus_sampling,
                                    c(g_assign_cases_to_folds_by_case) )[[1]]
 
 ## ============================== make feature reducer function list  =================================
-g_feature_reducer_functions_list <- list(PLS=g_feature_reducer_pls)
+g_feature_reducer_functions_list <- list(PLS=g_feature_reducer_pls,
+										 BIN_LLR=g_feature_reducer_bin_llr,
+										 FIT_LLR=g_feature_reducer_fit_llr)
 
 ## ============================== precompute class balance ratio  =================================
 
