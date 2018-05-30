@@ -36,6 +36,8 @@
 ## p_case_label_vec:  numeric vector containing the feature labels (0 or 1 only)
 ## p_func_lapply:  function(p_X, p_FUNC) returning a list
 
+library("plyr")  # rbind.fill
+
 g_run_mult_classifs_mult_hyperparams_cv <- function(p_classifier_list,
                                                       p_classifier_functions_list,
                                                       p_classifier_feature_matrices_list,
@@ -148,7 +150,7 @@ g_run_mult_classifs_mult_hyperparams_cv <- function(p_classifier_list,
                                                     
                                                     ## combine the reduced feature matrix with the base feature matrix
                                                     if ("sparseMatrix" %in% methods::is(base_feature_matrix)) {
-                                                        feature_matrix <- Matrix::cBind(base_feature_matrix, reduced_feature_matrix)
+                                                    	feature_matrix <- Matrix::cBind(base_feature_matrix, reduced_feature_matrix)
                                                     } else {
                                                         feature_matrix <- cbind(base_feature_matrix, reduced_feature_matrix)
                                                     }
@@ -214,7 +216,9 @@ g_run_mult_classifs_mult_hyperparams_cv <- function(p_classifier_list,
     ml_global_results_list_hpts_top <- setNames(lapply(classifier_hyperparameter_set_type_names_unique,
             function(p_classifier_hyperparameter_type_name) {
                 hptds_list_list <- ml_global_results_list_wp_top[which(classifier_hyperparameter_type_names == p_classifier_hyperparameter_type_name)]
-                do.call(rbind, lapply(hptds_list_list, function(hptds_list) {
+                # `feature_reducer_hyperparameters_list`` would add extra items to `performance_result` for classifiers with reducers
+                # `rbind.fill` will fill missing columns with NA
+                do.call(rbind.fill, lapply(hptds_list_list, function(hptds_list) {
                     do.call(rbind, lapply(hptds_list, "[[", "performance_results"))
                 }))
             }), classifier_hyperparameter_set_type_names_unique)
@@ -693,6 +697,165 @@ g_feature_reducer_pls <- function(p_input_feature_matrix,
     pls_model <- cppls(label ~ pls.x, data=p_input_feature_matrix_as_df[inds_cases_train,], ncomp=p_num_components)
     
     pls_pred <- predict(pls_model, p_input_feature_matrix_as_df, type="scores")
+}
+
+g_feature_reducer_bin_llr <- function(p_input_feature_matrix,
+								  p_case_label_vec,
+								  p_inds_cases_test,
+								  p_num_bins) {
+	stopifnot( ! is.null(p_num_bins) )
+	
+	if (! suppressMessages( require(dplyr, quietly=TRUE) ) ) { stop("package dplyr is missing") }
+	
+	# Assume the input feature matrix is actually a data frame
+	p_input_feature_matrix_as_df <- p_input_feature_matrix
+	p_input_feature_matrix_as_df$label <- p_case_label_vec
+	
+	inds_cases_train <- setdiff(1:length(p_case_label_vec), p_inds_cases_test)
+	
+	train_df <- p_input_feature_matrix_as_df[inds_cases_train, ]
+	train_R_df <- filter(train_df, label == 1)
+	train_C_df <- filter(train_df, label == 0)
+	
+	dist_cols <- c(
+		"intra_locus_dist_avg_canberra",
+		"intra_locus_dist_avg_canberra_scaled",
+		"intra_locus_dist_avg_euclidean",
+		"intra_locus_dist_avg_euclidean_scaled",
+		"intra_locus_dist_avg_manhattan",
+		"intra_locus_dist_avg_manhattan_scaled",
+		"intra_locus_dist_avg_cosine",
+		"intra_locus_dist_avg_pearsons"
+	)
+	
+	llr_lists <- lapply(dist_cols, function(dist_col) {
+		## ----- Determine break points on ALL data ----- ##
+		
+		dist_vec <- na.omit(train_df[, dist_col])
+		breaks <- seq(min(dist_vec), max(dist_vec), length.out = p_num_bins + 1)  # n bins, n+1 break points
+		breaks[1] <- -Inf
+		breaks[p_num_bins + 1] <- Inf
+		
+		## ----- Calculate likelihood for each bin on TRAINING data ----- ##
+		
+		train_R_dist_vec <- na.omit(train_R_df[, dist_col])
+		train_C_dist_vec <- na.omit(train_C_df[, dist_col])
+		
+		R_hist <- hist(train_R_dist_vec, breaks = breaks, plot = FALSE)
+		C_hist <- hist(train_C_dist_vec, breaks = breaks, plot = FALSE)
+		
+		if (any(R_hist$counts == 0)) {
+			print(R_hist$counts)
+			stop(paste("RSNPs'", dist_col, "has empty bins", "( p_num_bins =", p_num_bins, ")"))
+		}
+		
+		if (any(C_hist$counts == 0)) {
+			print(C_hist$counts)
+			stop(paste("CSNPs'", dist_col, "has empty bins", "( p_num_bins =", p_num_bins, ")"))
+		}
+		
+		bin_posterior_ratio <- R_hist$counts / C_hist$counts
+		prior_ratio <- length(train_R_dist_vec) / length(train_C_dist_vec)
+		bin_likelihood_ratio <- bin_posterior_ratio / prior_ratio
+		
+		## ----- Fit ALL data to bins ----- ## 
+		
+		# NaN and NA elements of x are mapped to NA codes, as are values outside range of breaks.
+		# Start from 1
+		snp_bin_id <- .bincode(p_input_feature_matrix_as_df[, dist_col], breaks = breaks, right = TRUE, include.lowest = TRUE)
+		
+		## ----- Calculate Log Likelihood for ALL Data ------ ##
+		
+		snp_likelihood_ratio <- bin_likelihood_ratio[snp_bin_id]
+		snp_log_likelihood_ratio <- log(snp_likelihood_ratio)
+		snp_log_likelihood_ratio[is.na(snp_log_likelihood_ratio)] <- 0  # fillna(0)
+		
+		## ----- Wrap return values ----- ##
+		llr_name <- gsub("avg", "llr", dist_col)
+		ret <- list()
+		ret[[llr_name]] <- snp_log_likelihood_ratio
+		
+		return(ret)
+	})
+	
+	llr_df <- data.frame(llr_lists)
+	rownames(llr_df) <- rownames(p_input_feature_matrix_as_df)
+	
+	return(as.matrix(llr_df))
+}
+
+g_feature_reducer_fit_llr <- function(p_input_feature_matrix,
+								  p_case_label_vec,
+								  p_inds_cases_test) {
+	if (! suppressMessages( require(dplyr, quietly=TRUE) ) ) { stop("package dplyr is missing") }
+	if (! suppressMessages( require(fitdistrplus, quietly=TRUE) ) ) { stop("package fitdistrplus is missing") }
+	
+	# Assume the input feature matrix is actually a data frame
+	p_input_feature_matrix_as_df <- p_input_feature_matrix
+	# There is already a column for label
+	# p_input_feature_matrix_as_df$label <- p_case_label_vec
+	
+	inds_cases_train <- setdiff(1:length(p_case_label_vec), p_inds_cases_test)
+	
+	train_df <- p_input_feature_matrix_as_df[inds_cases_train, ]
+	train_R_df <- filter(train_df, label == 1)
+	train_C_df <- filter(train_df, label == 0)
+	
+	dist_configs <- list(
+		c("intra_locus_dist_avg_canberra", "lnorm"),
+		c("intra_locus_dist_avg_canberra_scaled", "lnorm"),
+		c("intra_locus_dist_avg_euclidean", "lnorm"),
+		c("intra_locus_dist_avg_euclidean_scaled", "lnorm"),
+		c("intra_locus_dist_avg_manhattan", "lnorm"),
+		c("intra_locus_dist_avg_manhattan_scaled", "lnorm"),
+		c("intra_locus_dist_avg_cosine", "weibull"),
+		c("intra_locus_dist_avg_pearsons", "weibull")
+	)
+	
+	llr_lists <- lapply(dist_configs, function(dist_config) {
+		## ----- Parse Config ----- ##
+		dist_col <- dist_config[1]
+		distribution_name <- dist_config[2]
+		density_func_name <- paste0("d", dist_config[2])
+		
+		## ----- Fit Distributions on TRAINING data ----- ##
+		
+		train_R_dist_vec <- as.vector(na.omit(train_R_df[, dist_col]))
+		train_C_dist_vec <- as.vector(na.omit(train_C_df[, dist_col]))
+		
+		train_R_fit <- fitdist(train_R_dist_vec, distribution_name)
+		train_C_fit <- fitdist(train_C_dist_vec, distribution_name)
+		
+		## ----- Calculate Densities for ALL data ----- ## 
+		
+		# do.call can find a function by its name in string
+		
+		R_density_args <- as.list(train_R_fit$estimate)
+		R_density_args$x <- p_input_feature_matrix_as_df[, dist_col]
+		R_density_vec <- do.call(density_func_name, R_density_args)
+		
+		C_density_args <- as.list(train_C_fit$estimate)
+		C_density_args$x <- p_input_feature_matrix_as_df[, dist_col]
+		C_density_vec <- do.call(density_func_name, C_density_args)
+		
+		## ----- Calculate Log Likelihood for ALL Data ------ ##
+		
+		snp_likelihood_ratio <- R_density_vec / C_density_vec
+		snp_log_likelihood_ratio <- log(snp_likelihood_ratio)
+		snp_log_likelihood_ratio[is.na(snp_log_likelihood_ratio)] <- 0  # fillna(0)
+		
+		## ----- Wrap return values ----- ##
+		llr_name <- gsub("avg", "llr", dist_col)
+		ret <- list()
+		ret[[llr_name]] <- snp_log_likelihood_ratio
+		
+		return(ret)
+	})
+	
+	llr_df <- data.frame(llr_lists)
+	rownames(llr_df) <- rownames(p_input_feature_matrix_as_df)
+	
+	return(as.matrix(llr_df))
 }
 
 #' Grid-expands lists of possible values for each hyperparameter, into tuples
