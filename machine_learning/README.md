@@ -13,7 +13,7 @@
 put code in this file if it would otherwise be boilerplate in *every* script of
 the form `cerenkov_script_XXXXXX.R`.
           
-- `cerenkov_incscript_setup_ml.R`: Code that is sourced by a
+- `cerenkov_incscript_setup_aws.R`: Code that is sourced by a
 `cerenkov_script_XXXXXX.R` script in order to setup an EC2 instance for running
 the machine-learning job.  I put code in this file if it would otherwise be
 boilerplate in *every* script of the form `cerenkov_script_XXXXXX.R`.
