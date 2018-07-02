@@ -1,7 +1,7 @@
 # CERENKOV R scripts #
 
 
-# Guide to current CERENKOV machine-learning R code:
+## 1. Guide to current CERENKOV machine-learning R code
 
 - `cerenkov_func_base.R`: Defines global functions for the CERENKOV project.
 
@@ -36,14 +36,14 @@ The functions defined by the `cerenkov_func_` scripts all satisfy fhe following 
 The R scripts of the form `cerenkov_incscript_` are run by being called by `source` from
 a top-level `cerenkov_script_` script.
 
-# Reproducing the results of the 2017 ACM-BCB article:
+## 2. Reproducing the results of the 2017 ACM-BCB article
 
 To reproduce the results of our article *CERENKOV:* *Computational*
 *Elucidation* *of* *the* *Regulatory* *Noncoding* *Variome* the following R
 scripts from release **v0.1-alpha** of the project can be run in the R
 statistical computing environment (version 3.2.1).
 
-## Guide to source code files in CERENKOV v0.1-alpha:
+### 2.1. Guide to source code files in CERENKOV v0.1-alpha:
 
 - `cerenkov_ml_compare_models.R`: obtains the comparative machine-learning
 performance results that were used to make Figure 3 of the article (the script
@@ -70,7 +70,7 @@ parallel, xgboost (version 0.6-4), Matrix, and pbapply. The
 ggplot2 and reshape2.
 
 
-## Data files for download
+### 2.2 Data files for download
 
 The following .Rdata files (the "201703 data supplement" for CERENKOV) accompany
 the article *CERENKOV: Computational elucidation of the regulatory noncoding
@@ -89,3 +89,21 @@ at the following links (all are HTTP links to the file server `files.cgrb.oregon
 - [`scores_eigen.Rdata`](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov/datafiles_201703/scores_eigen.Rdata) (152 kB)
 - [`scores_fitcons.Rdata`](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov/datafiles_201703/scores_fitcons.Rdata) (54 kB)
 - [`snp_coordinages.Rdata`](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov/datafiles_201703/snp_coordinates.Rdata) (104 kB)
+
+## 3. Reproducing the results of the 2018 BMC-Bioinformatics submission 
+
+To reproduce the results of our 2018 BMC-Bioinformatics submission, CERENKOV2 with SNP-radius-LLR features, the following R
+scripts from release **v2.0-alpha** of the project can be run in the R statistical computing environment (version 3.4.4).
+
+### 3.1. Guide to source code files in CERENKOV v2.0-alpha
+
+- `cerenkov_script_run_ml_llr.R`: Replicate 5-fold xgboost training and validation 10 times, for both CERENKOV and CERENKOV2, on OSU18 dataset.
+- `cerenkov_script_run_ml_llr_rf.R`: Learn a Random Forest model on all OSU18 data simply for feature importance scores.
+- `cerenkov_script_analyze_ml_llr.R`: obtains the comparative machine-learning
+performance results that were used to make Figure 4 and Table 2 of the article.
+
+### 3.2 Data files for download
+
+- [`osu18_features1.1_cerenkov2.rds`](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov/datafiles_201806/osu18_features1.1_cerenkov2.rds) (8.5 MB)
+- [`osu18_intra_locus_dist.rds`](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov/datafiles_201806/osu18_intra_locus_dist.rds) (2.2 MB)
+- [`osu18_snp_coordinates.rds`](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov/datafiles_201806/osu18_snp_coordinates.rds) (167 kB)
