@@ -119,9 +119,9 @@ g_classifier_function_ranger_impurity <- g_make_classifier_function_ranger(p_nth
 																  p_get_perf_results=g_get_perf_results, 
 																  p_feature_importance_type="impurity")
 
-g_classifier_function_ranger_impurity_corrected <- g_make_classifier_function_ranger(p_nthread=g_par$nthreads_per_process,
-																		   p_get_perf_results=g_get_perf_results, 
-																		   p_feature_importance_type="impurity_corrected")
+# g_classifier_function_ranger_impurity_corrected <- g_make_classifier_function_ranger(p_nthread=g_par$nthreads_per_process,
+# 																		   p_get_perf_results=g_get_perf_results, 
+# 																		   p_feature_importance_type="impurity_corrected")
 
 g_classifier_function_ranger_permutation <- g_make_classifier_function_ranger(p_nthread=g_par$nthreads_per_process,
 																  p_get_perf_results=g_get_perf_results, 
@@ -201,17 +201,17 @@ g_classifier_list_llr_ranger_impurity <- lapply(g_hyperparameter_ranger,
 														 feature_reducer_hyperparameters_list=list())
 												})
 
-g_classifier_list_llr_ranger_impurity_corrected <- lapply(g_hyperparameter_ranger,
-														  function(p_hyp) {
-														  	list(classifier_feature_matrix_name="feat_ranger",
-														  		 classifier_function_name="ranger_impurity_corrected",
-														  		 classifier_hyperparameter_set_type_name="ranger",
-														  		 classifier_set_name="RF+LLR+impurity_corrected",
-														  		 classifier_hyperparameter_list=p_hyp, 
-														  		 feature_reducer_function_name="FIT_LLR", 
-														  		 feature_reducer_input_matrix_name="feat_intra_locus_dist_df", 
-														  		 feature_reducer_hyperparameters_list=list())
-														  })
+# g_classifier_list_llr_ranger_impurity_corrected <- lapply(g_hyperparameter_ranger,
+# 														  function(p_hyp) {
+# 														  	list(classifier_feature_matrix_name="feat_ranger",
+# 														  		 classifier_function_name="ranger_impurity_corrected",
+# 														  		 classifier_hyperparameter_set_type_name="ranger",
+# 														  		 classifier_set_name="RF+LLR+impurity_corrected",
+# 														  		 classifier_hyperparameter_list=p_hyp, 
+# 														  		 feature_reducer_function_name="FIT_LLR", 
+# 														  		 feature_reducer_input_matrix_name="feat_intra_locus_dist_df", 
+# 														  		 feature_reducer_hyperparameters_list=list())
+# 														  })
 
 g_classifier_list_llr_ranger_permutation <- lapply(g_hyperparameter_ranger,
 												   function(p_hyp) {
@@ -235,7 +235,7 @@ g_classifier_list_llr_ranger_permutation <- lapply(g_hyperparameter_ranger,
 
 g_classifier_list <- c(
 	g_classifier_list_llr_ranger_impurity,
-	g_classifier_list_llr_ranger_impurity_corrected, 
+	# g_classifier_list_llr_ranger_impurity_corrected, 
 	g_classifier_list_llr_ranger_permutation
 )
 
