@@ -62,13 +62,13 @@ g_par <- c(
     )
 )
 
-## ============================== load OSU feature data; check for problems with feature data =================================
+## ============================== load OSU annotation feature data =================================
 print("loading OSU data")
 g_annot_feat_df <- readRDS(file="osu18_features1.1_cerenkov2.rds")
 stopifnot(g_feature_matrix_is_OK(g_annot_feat_df))
 
-## workaround for bug in Matrix (
-## see Stack Overflow: https://stackoverflow.com/questions/43282720/r-error-in-validobject-object-when-running-as-script-but-not-in-console)
+## workaround for bug in Matrix
+## see Stack Overflow: https://stackoverflow.com/questions/43282720/r-error-in-validobject-object-when-running-as-script-but-not-in-console
 ## note: Rscript doesn't load methods by default, but R interactive does!
 library(methods)  
 
@@ -77,7 +77,7 @@ g_annot_feat_sm <- Matrix::sparse.model.matrix(label ~ .-1, data=g_annot_feat_df
 g_snp_names <- rownames(g_annot_feat_df)
 g_label_vec <- as.integer(as.character(g_annot_feat_df$label))
 
-## ============================== load feature data; check for problems with feature data =================================
+## ============================== load OSU geometric feature data =================================
 
 print("loading intra-locus distance data")
 g_geom_feat_df <- readRDS("osu18_intra_locus_dist.rds")
