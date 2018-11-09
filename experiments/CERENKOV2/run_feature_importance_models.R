@@ -69,11 +69,6 @@ print("loading OSU data")
 g_annot_feat_df <- readRDS(file="osu18_features1.1_cerenkov2.rds")
 stopifnot(g_feature_matrix_is_OK(g_annot_feat_df))
 
-## workaround for bug in Matrix (
-## see Stack Overflow: https://stackoverflow.com/questions/43282720/r-error-in-validobject-object-when-running-as-script-but-not-in-console)
-## note: Rscript doesn't load methods by default, but R interactive does!
-library(methods)  
-
 g_snp_names <- rownames(g_annot_feat_df)
 g_label_vec <- as.integer(as.character(g_annot_feat_df$label))
 
