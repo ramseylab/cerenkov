@@ -58,7 +58,7 @@ g_par <- c(
         flag_randomize_classifier_order = FALSE,
         flag_create_ec2_multi_cluster =   FALSE,  ## don't set this to true if you set "flag_create_fork_cluster" to true
         analysis_label =                  "CERENKOV2",
-        output_file_base_name =           "results_ranger",
+        output_file_base_name =           "records_of_feature_importance",
         debug_file_parallel =             "",
         debug=                            TRUE
     ))
