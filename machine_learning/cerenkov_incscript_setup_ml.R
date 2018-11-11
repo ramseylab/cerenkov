@@ -39,7 +39,12 @@ set.seed(g_par$random_number_seed)
 if (g_par$flag_locus_sampling) {
     print("loading SNP coordinates data")
 
-    g_snp_coords_df <- readRDS("osu18_snp_coordinates.rds")  
+    if ("snp_coord_rds" %in% names(g_par)) { # if `g_par$snp_coord_rds` is defined
+        g_snp_coords_df <- readRDS(g_par$snp_coord_rds)  
+    } else { # else, read the default one
+        g_snp_coords_df <- readRDS("osu18_snp_coordinates.rds")  
+    }
+    
     g_snp_locus_ids <- g_get_snp_locus_ids(g_snp_coords_df)
     rm(g_snp_coords_df)
 
