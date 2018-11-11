@@ -47,6 +47,7 @@ g_par <- c(
         show_progress_bar =               TRUE,
         parallel_use_load_balancing =     FALSE,
         flag_locus_sampling =             TRUE,         ## set to false if you want SNP-level sampling
+        snp_coord_rds =                   "osu18_snp_coordinates(anonymous).rds",
         # flag_xgb_importance =             FALSE,        ## if you set this to TRUE, make sure you set num_cv_replications=1
                                                         ## and num_folds_cross_validation=1
         random_number_seed =              if (is.na(g_trailing_args[1]) ||
@@ -64,7 +65,7 @@ g_par <- c(
 
 ## ============================== load OSU annotation feature data =================================
 print("loading OSU data")
-g_annot_feat_df <- readRDS(file="osu18_features1.1_cerenkov2.rds")
+g_annot_feat_df <- readRDS(file="osu18_features1.1_cerenkov2(anonymous).rds")
 stopifnot(g_feature_matrix_is_OK(g_annot_feat_df))
 
 ## workaround for bug in Matrix
@@ -80,7 +81,7 @@ g_label_vec <- as.integer(as.character(g_annot_feat_df$label))
 ## ============================== load OSU geometric feature data =================================
 
 print("loading intra-locus distance data")
-g_geom_feat_df <- readRDS("osu18_intra_locus_dist.rds")
+g_geom_feat_df <- readRDS("osu18_intra_locus_dist(anonymous).rds")
 stopifnot(rownames(g_geom_feat_df) == rownames(g_annot_feat_df))
 
 
