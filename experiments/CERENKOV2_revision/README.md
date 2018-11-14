@@ -2,15 +2,18 @@
 
 ### 1. Download all the input files
 
+Use the bash script below
+
 ```bash
 ./wget_input_files.sh
 ```
 
-4 files will be downloaded. They are:
+and 5 files will be downloaded. They are:
 
 - `osu18_features1.1_cerenkov2(anonymous).rds`
 - `osu18_intra_locus_dist(anonymous).rds`
 - `osu18_snp_coordinates(anonymous).rds`
+- `osu18_features_gwava(anonymous).rds`
 - `osu18_feature_names_categories.txt`
 
 ### 2. Run `xgboost` models for performance comparison
