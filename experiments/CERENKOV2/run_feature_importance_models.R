@@ -45,7 +45,7 @@ g_par <- c(
         num_folds_cross_validation =      1,     ## we are standardizing on 5-fold CV
         num_cv_replications =             1,            ## set to anywhere from 1--200, typically
         flag_create_fork_cluster =        FALSE,   ## TRUE or FALSE
-        override_num_fork_processes =     8,   ## for EC2, set to 64; for my MBP, set to 8
+        override_num_fork_processes =     NULL,   ## for EC2, set to 64; for my MBP, set to 8
         show_progress_bar =               TRUE,
         parallel_use_load_balancing =     FALSE,
         flag_locus_sampling =             TRUE,         ## set to false if you want SNP-level sampling
