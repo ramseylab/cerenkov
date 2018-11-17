@@ -81,7 +81,7 @@ g_label_vec <- as.integer(as.character(g_annot_feat_df$label))
 ## ============================== load OSU geometric feature data =================================
 
 print("loading intra-locus distance data")
-g_geom_feat_df <- readRDS("osu18_intra_locus_dist(anonymous).rds")
+g_geom_feat_df <- readRDS("osu18_intra_locus_dist_10(anonymous).rds")
 stopifnot(rownames(g_geom_feat_df) == rownames(g_annot_feat_df))
 
 ## ============================== load GWAVA feature data ==============================
@@ -156,6 +156,31 @@ g_classifier_list_xgb_control <- lapply(g_xgb_hp_grid,
 	                                             classifier_hyperparameter_list=hp_cell)
 	                                    })
 
+# Key parameter for "FIT_LLR" reducer, i.e. `g_feature_reducer_fit_llr`
+# 
+# For CERENKOV2 first submission, 8 types of intralocus distances were used.
+# And for "cosine" and "pearsons" distances, Weibull distributions were fitted.
+# 
+# In the revision, 10 types of intralocus distances were used and 
+# normal distributions were fitted instead for "cosine" and "pearsons" distances
+# because Yao found an error in previous AIC calculation. 
+#
+# DO NOT use list of vectors such as `list(c("intra_locus_dist_avg_canberra", "lnorm"))` 
+# for `g_distribution_configs` because it will trigger errors in `p_classifier_list`
+
+g_distribution_configs <- list(
+	intra_locus_dist_avg_canberra = "lnorm",
+	intra_locus_dist_avg_canberra_scaled = "lnorm",
+	intra_locus_dist_avg_euclidean = "lnorm",
+	intra_locus_dist_avg_euclidean_scaled = "lnorm",
+	intra_locus_dist_avg_manhattan = "lnorm",
+	intra_locus_dist_avg_manhattan_scaled = "lnorm",
+	intra_locus_dist_avg_cosine = "norm",
+    intra_locus_dist_avg_cosine_scaled = "lnorm",
+	intra_locus_dist_avg_pearsons = "norm",
+    intra_locus_dist_avg_pearsons_scaled = "lnorm"
+)
+
 g_classifier_list_xgb_case <- lapply(g_xgb_hp_grid,
 									 function(hp_cell) {
 									 	list(classifier_feature_matrix_name="annot_feat",
@@ -165,7 +190,7 @@ g_classifier_list_xgb_case <- lapply(g_xgb_hp_grid,
 									 		 classifier_hyperparameter_list=hp_cell, 
 									 		 feature_reducer_function_name="FIT_LLR", 
 									 		 feature_reducer_input_matrix_name="geom_feat", 
-									 		 feature_reducer_hyperparameters_list=list())
+									 		 feature_reducer_hyperparameters_list=list(p_distribution_configs=g_distribution_configs))
 									 })
 
 ## ------------------ ranger hyperparameter lists --------------

@@ -181,7 +181,7 @@ g_run_mult_classifs_mult_hyperparams_cv <- function(p_classifier_list,
                                                 if (is.null(save_hyperparameter_list)) {
                                                     save_hyperparameter_list <- list(classifier_hyperparameters.="")
                                                 }
-
+                                             	
                                                 ## create a list of results
                                                 ## WARNING:  DO **NOT** ALTER THE ORDER OF THESE LIST ELEMENTS, IT WILL BREAK BRITTLE DOWNSTREAM ANALYSIS CODE:
                                                 list(performance_results=data.frame(c(classifier_ret_list,
@@ -702,7 +702,37 @@ g_feature_reducer_pls <- function(p_input_feature_matrix,
 g_feature_reducer_bin_llr <- function(p_input_feature_matrix,
 								  p_case_label_vec,
 								  p_inds_cases_test,
+                                  p_dist_col_names,
 								  p_num_bins) {
+    # For CERENKOV2 first submission, 8 types of intralocus distances were used
+    # 
+    # p_dist_col_names <- c(
+	# 	"intra_locus_dist_avg_canberra",
+	# 	"intra_locus_dist_avg_canberra_scaled",
+	# 	"intra_locus_dist_avg_euclidean",
+	# 	"intra_locus_dist_avg_euclidean_scaled",
+	# 	"intra_locus_dist_avg_manhattan",
+	# 	"intra_locus_dist_avg_manhattan_scaled",
+	# 	"intra_locus_dist_avg_cosine",
+	# 	"intra_locus_dist_avg_pearsons"
+	# )
+    
+    # For CERENKOV2 revision, 10 types of intralocus distances were used
+    # 
+    # p_dist_col_names <- c(
+	# 	"intra_locus_dist_avg_canberra",
+	# 	"intra_locus_dist_avg_canberra_scaled",
+	# 	"intra_locus_dist_avg_euclidean",
+	# 	"intra_locus_dist_avg_euclidean_scaled",
+	# 	"intra_locus_dist_avg_manhattan",
+	# 	"intra_locus_dist_avg_manhattan_scaled",
+	# 	"intra_locus_dist_avg_cosine",
+    #   "intra_locus_dist_avg_cosine_scaled",
+	# 	"intra_locus_dist_avg_pearsons",
+	# 	"intra_locus_dist_avg_pearsons_scaled"
+	# )
+    
+    stopifnot( ! is.null(p_dist_col_names) )
 	stopifnot( ! is.null(p_num_bins) )
 	
 	if (! suppressMessages( require(dplyr, quietly=TRUE) ) ) { stop("package dplyr is missing") }
@@ -717,18 +747,7 @@ g_feature_reducer_bin_llr <- function(p_input_feature_matrix,
 	train_R_df <- filter(train_df, label == 1)
 	train_C_df <- filter(train_df, label == 0)
 	
-	dist_cols <- c(
-		"intra_locus_dist_avg_canberra",
-		"intra_locus_dist_avg_canberra_scaled",
-		"intra_locus_dist_avg_euclidean",
-		"intra_locus_dist_avg_euclidean_scaled",
-		"intra_locus_dist_avg_manhattan",
-		"intra_locus_dist_avg_manhattan_scaled",
-		"intra_locus_dist_avg_cosine",
-		"intra_locus_dist_avg_pearsons"
-	)
-	
-	llr_lists <- lapply(dist_cols, function(dist_col) {
+	llr_lists <- lapply(p_dist_col_names, function(dist_col) {
 		## ----- Determine break points on ALL data ----- ##
 		
 		dist_vec <- na.omit(train_df[, dist_col])
@@ -786,7 +805,41 @@ g_feature_reducer_bin_llr <- function(p_input_feature_matrix,
 
 g_feature_reducer_fit_llr <- function(p_input_feature_matrix,
 								  p_case_label_vec,
-								  p_inds_cases_test) {
+								  p_inds_cases_test,
+                                  p_distribution_configs) {
+    # For CERENKOV2 first submission, 8 types of intralocus distances were used.
+    # And for "cosine" and "pearsons", Weibull distributions were fitted
+    # 
+    # p_distribution_configs <- list(
+	# 	intra_locus_dist_avg_canberra = "lnorm",
+	# 	intra_locus_dist_avg_canberra_scaled = "lnorm",
+	# 	intra_locus_dist_avg_euclidean = "lnorm",
+	# 	intra_locus_dist_avg_euclidean_scaled = "lnorm",
+	# 	intra_locus_dist_avg_manhattan = "lnorm",
+	# 	intra_locus_dist_avg_manhattan_scaled = "lnorm",
+	# 	intra_locus_dist_avg_cosine = "weibull",
+	# 	intra_locus_dist_avg_pearsons = "weibull"
+	# )
+
+    # For CERENKOV2 revision, 10 types of intralocus distances were used.
+    # And for "cosine" and "pearsons", normal distributions were fitted 
+    # (because AICs were not correctly calculated previously)
+    # 
+    # p_distribution_configs <- list(
+	# 	intra_locus_dist_avg_canberra = "lnorm",
+	# 	intra_locus_dist_avg_canberra_scaled = "lnorm",
+	# 	intra_locus_dist_avg_euclidean = "lnorm",
+	# 	intra_locus_dist_avg_euclidean_scaled = "lnorm",
+	# 	intra_locus_dist_avg_manhattan = "lnorm",
+	# 	intra_locus_dist_avg_manhattan_scaled = "lnorm",
+	# 	intra_locus_dist_avg_cosine = "norm",
+    #   intra_locus_dist_avg_cosine_scaled = "lnorm",
+	# 	intra_locus_dist_avg_pearsons = "norm",
+    #   intra_locus_dist_avg_pearsons_scaled = "lnorm"
+	# )
+
+    stopifnot( ! is.null(p_distribution_configs) )
+
 	if (! suppressMessages( require(dplyr, quietly=TRUE) ) ) { stop("package dplyr is missing") }
 	if (! suppressMessages( require(fitdistrplus, quietly=TRUE) ) ) { stop("package fitdistrplus is missing") }
 	
@@ -801,22 +854,13 @@ g_feature_reducer_fit_llr <- function(p_input_feature_matrix,
 	train_R_df <- filter(train_df, label == 1)
 	train_C_df <- filter(train_df, label == 0)
 	
-	dist_configs <- list(
-		c("intra_locus_dist_avg_canberra", "lnorm"),
-		c("intra_locus_dist_avg_canberra_scaled", "lnorm"),
-		c("intra_locus_dist_avg_euclidean", "lnorm"),
-		c("intra_locus_dist_avg_euclidean_scaled", "lnorm"),
-		c("intra_locus_dist_avg_manhattan", "lnorm"),
-		c("intra_locus_dist_avg_manhattan_scaled", "lnorm"),
-		c("intra_locus_dist_avg_cosine", "weibull"),
-		c("intra_locus_dist_avg_pearsons", "weibull")
-	)
-	
-	llr_lists <- lapply(dist_configs, function(dist_config) {
+	llr_lists <- lapply(names(p_distribution_configs), function(dist_col) {
 		## ----- Parse Config ----- ##
-		dist_col <- dist_config[1]
-		distribution_name <- dist_config[2]
-		density_func_name <- paste0("d", dist_config[2])
+		
+		# `dist_col` is the name of one of distance columns, 
+		# such as "intra_locus_dist_avg_canberra"
+		distribution_name <- p_distribution_configs[[dist_col]]
+		density_func_name <- paste0("d", distribution_name)
 		
 		## ----- Fit Distributions on TRAINING data ----- ##
 		
