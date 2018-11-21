@@ -152,7 +152,7 @@ g_classifier_list_xgb_control <- lapply(g_xgb_hp_grid,
 	                                        list(classifier_feature_matrix_name="annot_feat",
 	                                             classifier_function_name="xgb",
 	                                             classifier_hyperparameter_set_type_name="g_xgb_hp_grid",
-	                                             classifier_set_name="CK", # Control model: CERENKOV annotation features only
+	                                             classifier_set_name="CERENKOV", # Control model: CERENKOV annotation features only
 	                                             classifier_hyperparameter_list=hp_cell)
 	                                    })
 
@@ -186,7 +186,7 @@ g_classifier_list_xgb_case <- lapply(g_xgb_hp_grid,
 									 	list(classifier_feature_matrix_name="annot_feat",
 									 		 classifier_function_name="xgb",
 									 		 classifier_hyperparameter_set_type_name="g_xgb_hp_grid",
-									 		 classifier_set_name="CK+LLR", # Case model: CERENKOV annotation features + geometric LLR features
+									 		 classifier_set_name="CERENKOV2", # Case model: CERENKOV annotation features + geometric LLR features
 									 		 classifier_hyperparameter_list=hp_cell, 
 									 		 feature_reducer_function_name="FIT_LLR", 
 									 		 feature_reducer_input_matrix_name="geom_feat", 
