@@ -25,7 +25,7 @@
 library(reshape2)
 library(ggplot2)
 library(dplyr)
-library(arrangements)
+library(gtools)
 
 g_args <- commandArgs(trailingOnly=TRUE)
 g_input_file <- g_args[1]
@@ -321,7 +321,7 @@ get_perf_df_list <- function(hyperparameter_set_type_name) {
 perf_df_lists <- lapply(names(g_ml_performance_results), get_perf_df_list)
 perf_df_lists <- unlist(perf_df_lists, recursive=FALSE)
 
-clf_pairs <- combinations(names(perf_df_lists), k=2)
+clf_pairs <- combinations(n=length(names(perf_df_lists)), r=2, v=names(perf_df_lists))
 
 pw_ttest <- function(clf_x_name, clf_y_name) {
 	pw_ttest_pvalues <- list()

@@ -1,4 +1,4 @@
-install.packages(c("arrangements", "aws.ec2", "dplyr", "extrafont", "fitdistrplus", "ggplot2", "methods", "parallel", "pbapply", "pls", "plyr", "PRROC", "reshape2", "xgboost"))
+install.packages(c("aws.ec2", "dplyr", "extrafont", "fitdistrplus", "ggplot2", "gtools", "methods", "parallel", "pbapply", "pls", "plyr", "PRROC", "reshape2", "xgboost"))
 
 # Need "ranger" version 0.6.0 specifically
 # Rager Archive: https://cran.r-project.org/src/contrib/Archive/ranger/
