@@ -1,75 +1,15 @@
-# CERENKOV feature extraction
+# genome-wide feature_extraction folder without source_data folder and eigen values
 
-## Prerequisites
+## Things to do before running
 
-### BED utilities
+- The absolute directory of the file "bigWigAverageOverBed" must be adjusted in the sys_tool.py module (line 102).
+- Make sure to have the source_data folder. It is available in the EC2 instance.
+- Make sure to have the eigen values: mart_export_hg19_chr22_SNP.score
+- Yao has already made the eigen values and it can be downloaded from his workstation (it is already present in the EC2 instance).
 
-Please install [bedtools - 2.25.0](http://bedtools.readthedocs.io/en/latest/content/installation.html) and [pybedtools - 0.7.8](https://daler.github.io/pybedtools/main.html#installing-pybedtools).
+## How to run the feature_extraction 
 
-### Bigwig utilities
-
-Please install [kentUtils](https://github.com/ENCODE-DCC/kentUtils).
-
-### MySQL access
-
-Please install [PyMySQL - 0.7.6](https://github.com/PyMySQL/PyMySQL) and [SQLAlchemy - 1.0.14](https://www.sqlalchemy.org/).
-
-### DNAShape + GC Content
-
-Please install libs below before running the scripts.
-
-```r
-# Bioconductor ref: http://www.gettinggeneticsdone.com/2011/04/using-rstats-bioconductor-to-get.html
-source("http://www.bioconductor.org/biocLite.R")
-biocLite("BSgenome")
-biocLite("BSgenome.Hsapiens.UCSC.hg19") #installs the human genome (~850 MB download).
-
-# DNAShape lib
-devtools::install_github("ramseylab/regshape")
-```
-
-### CADD
-
-Please copy the [CADD](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov/datafiles_201703/CADD/) folder to **_source_data_**.
-
-### eQTL p-values
-
-Please install libs below before running the scripts.
-
-```r
-install.packages("plyr")
-```
-
-Please copy the [GTEx_Analysis_V4_eQTLs](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov/datafiles_201703/GTEx_Analysis_V4_eQTLs) folder to **_source_data_**.
-
-### fitCons
-
-Please copy the [fitCons](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov/datafiles_201703/fitCons/) folder to **_source_data_**.
-
-### FSU Repli-chip
-
-Please copy the [FSU_Repli_chip](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov/datafiles_201703/FSU_Repli_chip/) folder to **_source_data_**.
-
-### GERP
-
-Please copy the [GERP](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov/datafiles_201703/GERP/) folder to **_source_data_**.
-
-### eQTL
-
-Please copy the [GTEx_Analysis_V4_eQTLs](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov/datafiles_201703/GTEx_Analysis_V4_eQTLs/) folder to **_source_data_**.
-
-### TFBS Summary
-
-Please copy the [Sanger_TFBS_Summary](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov/datafiles_201703/Sanger_TFBS_Summary/) folder to **_source_data_**.
-
-### Uniform DHS
-
-Please copy the [UCSC_DHS](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov/datafiles_201703/UCSC_DHS/) folder to **_source_data_**.
-
-### UW Repli-chip
-
-Please copy the [UW_Repli_Seq](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov/datafiles_201703/Sanger_TFBS_Summary/) folder to **_source_data_**.
-
-### Augmented OSU Features
-
-Please copy the [augment_osu_features_datafiles](http://files.cgrb.oregonstate.edu/Ramsey_Lab/cerenkov/datafiles_201703/augment_osu_features_datafiles/) folder to **_source_data_**.
+- python3 must be used to run all the modules.
+- The main module to run is listed as "cerenkov_bef_genome_wide.py".
+- For the input, the parser requires the input to be the .txt file with the rsids (single rsid per row).
+- For the output, the parser requires an already created .csv file.
