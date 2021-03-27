@@ -1,0 +1,38 @@
+Time:
+
+AlleleUtil           : 0:00:05.609482 (1%)
+CoordUtil            : 0:00:01.199510 (0%)
+TfUtil               : 0:00:03.860148 (1%)
+MasterDhsUtil        : 0:00:02.064348 (0%)
+UniformDhsUtil       : 0:00:18.788780 (4%)
+PhastconsUtil        : 0:00:01.608035 (0%)
+TssDistUtil          : 0:00:24.812662 (5%)
+EqtlUtil             : 0:00:07.104551 (1%)
+GerpUtil             : 0:00:08.312036 (2%)
+GenomeSegUtil        : 0:00:26.338433 (5%)
+DnaShapeGcContentUtil: 0:00:00 (0%)
+EigenUtil            : 0:00:26.675707 (5%)
+NkiLadUtil           : 0:02:16.175779 (28%)
+RepliChipUtil        : 0:00:24.830922 (5%)
+RepliChipUtil        : 0:00:37.146013 (8%)
+SangerTfbsUtil       : 0:00:01.131329 (0%)
+VistaEnhancerUtil    : 0:02:22.884599 (30%)
+GwavaUtil            : 0:00:20.161463 (4%)
+AugmentedUtil        : 0:00:00 (0%)
+Total seconds:  481
+Total minutes:  8
+
+-----------------------
+
+Memory usage:  Partition of a set of 338059 objects. Total size = 2335168737 bytes.
+ Index  Count   %     Size   % Cumulative  % Kind (class / dict of class)
+     0     22   0 986309827  42 986309827  42 pandas.core.frame.DataFrame
+     1     27   0 881825520  38 1868135347  80 pandas.core.series.Series
+     2    263   0 342727038  15 2210862385  95 numpy.ndarray
+     3     14   0 81799408   4 2292661793  98 pandas.core.indexes.numeric.Int64Index
+     4  85796  25 12527736   1 2305189529  99 str
+     5  90699  27  7188336   0 2312377865  99 tuple
+     6  41106  12  3118367   0 2315496232  99 bytes
+     7  20896   6  3025648   0 2318521880  99 types.CodeType
+     8  20083   6  2731288   0 2321253168  99 function
+     9   3903   1  2395384   0 2323648552 100 dict (no owner)
